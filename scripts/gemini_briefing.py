@@ -1,6 +1,6 @@
 """수집 결과(data/날짜.json) → Gemini API → docs/reports/날짜.md  (표준 라이브러리만 사용)
 
-환경변수: GEMINI_API_KEY (필수), GEMINI_MODEL (기본 gemini-2.5-flash)
+환경변수: GEMINI_API_KEY (필수), GEMINI_MODEL (선택, 있으면 최우선) — 없으면 MODELS 폴백 체인 순서대로 시도
 종료 코드: 0 성공/의도적 건너뜀, 3 키 없음, 1 실패(부분 결과는 저장하지 않음).
 뉴스 선별·번역·요약 + 차트 해석 + 반도체 + 리스크 + 종합 브리핑만 만든다. 모의투자 매매 판단은 하지 않는다."""
 import importlib.util, json, os, sys, time, tomllib, urllib.error, urllib.request
@@ -9,7 +9,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 KST = timezone(timedelta(hours=9))
-MODEL = os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash"   # 404면 아래 _pick_model()이 사용 가능한 flash 모델을 찾는다
+MODELS = [m for m in [os.environ.get("GEMINI_MODEL")] if m] + ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3-flash-preview", "gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]
+MODEL_IDX = 0
+MODEL = MODELS[0]   # 표기용 — 실제 사용 모델은 MODELS[MODEL_IDX]
 SEMI_TICKERS = {"SOXL", "SOXX", "SMH", "AMD", "TSM", "MU", "INTC", "ASML", "ARM", "QCOM", "AMAT", "LRCX", "MRVL", "NVDA", "AVGO"}
 
 # 기존 프롬프트(src/agents.py) 재사용 — import 시 부작용 없음(표준 라이브러리만 import)
@@ -18,63 +20,48 @@ agents = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(agents)
 
 
-def _pick_model(key: str) -> str | None:
-    """ListModels에서 generateContent를 지원하는 최신 일반 flash 모델을 고른다."""
-    import re
-    req = urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", headers={"x-goog-api-key": key})
-    names = [m["name"].split("/", 1)[1] for m in json.loads(urllib.request.urlopen(req, timeout=60).read()).get("models", [])
-             if "generateContent" in m.get("supportedGenerationMethods", [])]
-    ok = [n for n in names if re.fullmatch(r"gemini-[\d.]+-flash", n)]
-    ok.sort(key=lambda n: [int(x) for x in re.findall(r"\d+", n)], reverse=True)
-    return ok[0] if ok else None
-
-
 def gemini(system: str, user: str, max_tokens: int = 16000) -> str:
-    global MODEL
+    """모델 폴백 체인: 과부하(503)·시간 초과·404·429면 다음 모델로. 성공한 모델은 이후 호출에서도 유지."""
+    global MODEL_IDX
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         sys.exit(3)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
     body = json.dumps({
         "systemInstruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": [{"text": user}]}],
         "generationConfig": {"temperature": 0.3, "maxOutputTokens": max_tokens},
     }).encode()
     last = None
-    for attempt in range(4):
-        t0 = time.time()
-        print(f"[gemini] {MODEL} 호출 시도 {attempt + 1} (입력 {len(user)}자)", flush=True)
-        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", "x-goog-api-key": key})
-        try:
-            data = json.loads(urllib.request.urlopen(req, timeout=120).read())
-            cand = data["candidates"][0]
-            text = "".join(p.get("text", "") for p in cand.get("content", {}).get("parts", []))
-            if not text.strip():
-                raise RuntimeError(f"빈 응답 (finishReason={cand.get('finishReason')})")
-            if cand.get("finishReason") == "MAX_TOKENS":
-                raise RuntimeError("출력 한도 초과로 잘림 — 부분 결과는 쓰지 않음")
-            print(f"[gemini] 성공 {time.time() - t0:.0f}s, 출력 {len(text)}자, finish={cand.get('finishReason')}", flush=True)
-            time.sleep(7)   # 무료 티어 분당 호출 한도 완충
-            return text
-        except urllib.error.HTTPError as e:
-            last = f"HTTP {e.code}: {e.read()[:200]!r}"
-            print(f"[gemini] 실패 {time.time() - t0:.0f}s {last}", flush=True)
-            if e.code in (429, 500, 503):
-                time.sleep(15 * (attempt + 1)); continue
-            if e.code == 404 and not os.environ.get("_MODEL_PICKED"):
-                os.environ["_MODEL_PICKED"] = "1"
-                picked = _pick_model(key)
-                if picked and picked != MODEL:
-                    print(f"[model] {MODEL} 사용 불가 → {picked} 로 전환")
-                    MODEL = picked
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
-                    continue
-            break
-        except Exception as e:   # 네트워크/파싱 오류
-            last = str(e)[:200]
-            print(f"[gemini] 오류 {time.time() - t0:.0f}s {last}", flush=True)
-            time.sleep(5 * (attempt + 1))
-    raise RuntimeError(f"Gemini 호출 실패: {last}")
+    for idx in range(MODEL_IDX, len(MODELS)):
+        model = MODELS[idx]
+        for attempt in (1, 2):
+            t0 = time.time()
+            print(f"[gemini] {model} 호출 시도 {attempt} (입력 {len(user)}자)", flush=True)
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", "x-goog-api-key": key})
+            try:
+                data = json.loads(urllib.request.urlopen(req, timeout=90).read())
+                cand = data["candidates"][0]
+                text = "".join(p.get("text", "") for p in cand.get("content", {}).get("parts", []))
+                if not text.strip():
+                    raise RuntimeError(f"빈 응답 (finishReason={cand.get('finishReason')})")
+                if cand.get("finishReason") == "MAX_TOKENS":
+                    raise RuntimeError("출력 한도 초과로 잘림 — 부분 결과는 쓰지 않음")
+                print(f"[gemini] 성공 {model} {time.time() - t0:.0f}s, 출력 {len(text)}자", flush=True)
+                MODEL_IDX = idx
+                time.sleep(7)   # 무료 티어 분당 호출 한도 완충
+                return text
+            except urllib.error.HTTPError as e:
+                last = f"{model} HTTP {e.code}: {e.read()[:120]!r}"
+                print(f"[gemini] 실패 {time.time() - t0:.0f}s {last}", flush=True)
+                if e.code in (404, 400, 403):
+                    break            # 이 모델은 사용 불가 → 바로 다음 모델
+                time.sleep(5)        # 429/5xx: 한 번 더, 안 되면 다음 모델
+            except Exception as e:   # 시간 초과/네트워크/응답 형식 오류
+                last = f"{model} {str(e)[:120]}"
+                print(f"[gemini] 오류 {time.time() - t0:.0f}s {last}", flush=True)
+                time.sleep(3)
+    raise RuntimeError(f"모든 모델 호출 실패: {last}")
 
 
 agents._ask = lambda model, system, user, max_tokens=8000: gemini(system, user, max(max_tokens, 8000))
@@ -105,7 +92,6 @@ def ping():
     req = urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", headers={"x-goog-api-key": key})
     ms = json.loads(urllib.request.urlopen(req, timeout=60).read()).get("models", [])
     print("[ping] generateContent 지원 모델:", ", ".join(sorted(m["name"].split("/", 1)[1] for m in ms if "generateContent" in m.get("supportedGenerationMethods", []))), flush=True)
-    print(f"[ping] 모델 {MODEL}")
     print("[ping] 응답:", gemini("한 단어로만 답하세요.", "OK 라고 답하세요.", 8000).strip()[:100], flush=True)
 
 
@@ -163,7 +149,7 @@ date: {now.strftime('%Y-%m-%d %H:%M:%S +0900')}
 generator: gemini
 ---
 
-> 생성 시각 {now.strftime('%Y-%m-%d %H:%M')} KST · {MODEL}가 수집 자료로 자동 작성한 문서이며 **투자 권유가 아닙니다.** 가격·지표는 직전 거래일 정규장 종가 기준입니다.
+> 생성 시각 {now.strftime('%Y-%m-%d %H:%M')} KST · {MODELS[MODEL_IDX]}가 수집 자료로 자동 작성한 문서이며 **투자 권유가 아닙니다.** 가격·지표는 직전 거래일 정규장 종가 기준입니다.
 
 ## 시장 스냅샷 (직전 거래일 종가)
 {snap}
