@@ -41,20 +41,24 @@ def gemini(system: str, user: str, max_tokens: int = 16000) -> str:
         "generationConfig": {"temperature": 0.3, "maxOutputTokens": max_tokens},
     }).encode()
     last = None
-    for attempt in range(5):
+    for attempt in range(4):
+        t0 = time.time()
+        print(f"[gemini] {MODEL} 호출 시도 {attempt + 1} (입력 {len(user)}자)", flush=True)
         req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", "x-goog-api-key": key})
         try:
-            data = json.loads(urllib.request.urlopen(req, timeout=180).read())
+            data = json.loads(urllib.request.urlopen(req, timeout=120).read())
             cand = data["candidates"][0]
             text = "".join(p.get("text", "") for p in cand.get("content", {}).get("parts", []))
             if not text.strip():
                 raise RuntimeError(f"빈 응답 (finishReason={cand.get('finishReason')})")
             if cand.get("finishReason") == "MAX_TOKENS":
                 raise RuntimeError("출력 한도 초과로 잘림 — 부분 결과는 쓰지 않음")
+            print(f"[gemini] 성공 {time.time() - t0:.0f}s, 출력 {len(text)}자, finish={cand.get('finishReason')}", flush=True)
             time.sleep(7)   # 무료 티어 분당 호출 한도 완충
             return text
         except urllib.error.HTTPError as e:
             last = f"HTTP {e.code}: {e.read()[:200]!r}"
+            print(f"[gemini] 실패 {time.time() - t0:.0f}s {last}", flush=True)
             if e.code in (429, 500, 503):
                 time.sleep(15 * (attempt + 1)); continue
             if e.code == 404 and not os.environ.get("_MODEL_PICKED"):
@@ -68,6 +72,7 @@ def gemini(system: str, user: str, max_tokens: int = 16000) -> str:
             break
         except Exception as e:   # 네트워크/파싱 오류
             last = str(e)[:200]
+            print(f"[gemini] 오류 {time.time() - t0:.0f}s {last}", flush=True)
             time.sleep(5 * (attempt + 1))
     raise RuntimeError(f"Gemini 호출 실패: {last}")
 
@@ -93,7 +98,16 @@ def snapshot_md(rows):
     return "\n".join(out)
 
 
+def ping():
+    if not os.environ.get("GEMINI_API_KEY"):
+        sys.exit(3)
+    print(f"[ping] 모델 {MODEL}")
+    print("[ping] 응답:", gemini("한 단어로만 답하세요.", "OK 라고 답하세요.", 8000).strip()[:100], flush=True)
+
+
 def main():
+    if "--ping" in sys.argv:
+        return ping()
     force = "--force" in sys.argv
     cfg = tomllib.loads((ROOT / "config.toml").read_text(encoding="utf-8"))
     files = sorted((ROOT / "data").glob("20*.json"))

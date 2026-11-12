@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       briefing_test:
-        description: "true면 브리핑을 reports에 저장하지 않고 아티팩트로만 만든다(Gemini 시험용)"
+        description: "ping=연결만 시험, true면 브리핑을 reports에 저장하지 않고 아티팩트로만 만든다(Gemini 시험용)"
         default: "false"
 
 
@@ -37,6 +37,7 @@ jobs:
       - name: 브리핑 생성 (Gemini) — 실패해도 모의투자 점검은 계속
         id: briefing
         continue-on-error: true
+        timeout-minutes: 15
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
@@ -45,15 +46,17 @@ jobs:
             echo "::warning::GEMINI_API_KEY 시크릿이 없어 브리핑 생성을 건너뜁니다."
             exit 0
           fi
-          if [ "${{ inputs.briefing_test }}" = "true" ]; then
+          if [ "${{ inputs.briefing_test }}" = "ping" ]; then
+            python -I -u scripts/gemini_briefing.py --ping
+          elif [ "${{ inputs.briefing_test }}" = "true" ]; then
             mkdir -p test_out
-            python -I scripts/gemini_briefing.py --out=test_out/briefing-test.md
+            python -I -u scripts/gemini_briefing.py --out=test_out/briefing-test.md
           else
-            python -I scripts/gemini_briefing.py
+            python -I -u scripts/gemini_briefing.py
           fi
 
       - name: 시험 브리핑 아티팩트 업로드
-        if: ${{ inputs.briefing_test == 'true' }}
+        if: ${{ inputs.briefing_test == 'true' && always() }}
         uses: actions/upload-artifact@v4
         with:
           name: briefing-test
