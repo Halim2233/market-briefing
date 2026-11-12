@@ -33,6 +33,10 @@ jobs:
           fi
           claude --version
           claude auth status || true
+          echo "--- test 1: 최소 호출"
+          echo "Reply with exactly: OK" | claude -p --model sonnet 2>&1 | head -c 300; echo " [exit=${PIPESTATUS[1]}]"
+          echo "--- test 2: 현재 파이프라인과 같은 옵션"
+          echo "Reply with exactly: OK" | claude -p --model sonnet --system-prompt "You are a test." --tools "" --max-turns 1 --output-format text 2>&1 | head -c 300; echo " [exit=${PIPESTATUS[1]}]"
       - run: python src/main.py
         env:
           # 구독 토큰: 로컬에서 `claude setup-token`으로 발급 (API 과금 없이 구독 사용량 사용)
