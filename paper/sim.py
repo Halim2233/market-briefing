@@ -39,6 +39,35 @@ COMMISSION = 0.0      # 가정: 수수료 $0 (미국 온라인 브로커 일반)
 SITE = D.parent / "docs" / "paper"   # GitHub Pages 공개용 사본
 
 
+def _inline(t):
+    import html, re
+    t = html.escape(t.strip(), quote=False)
+    t = re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
+    t = re.sub(r"[*][*]([^*]+)[*][*]", r"<strong>\1</strong>", t)
+    return re.sub(r"(?<![\w*])[*]([^*]+)[*](?![\w*])", r"<em>\1</em>", t)
+
+
+def md_tables_to_html(md):
+    """GitHub Pages의 kramdown이 파이프 표를 인식하지 못해 표를 HTML로 직접 변환한다."""
+    out, rows = [], []
+
+    def flush():
+        if rows:
+            th = "".join("<th>%s</th>" % _inline(c) for c in rows[0])
+            tr = "".join("<tr>%s</tr>" % "".join("<td>%s</td>" % _inline(c) for c in r) for r in rows[2:])
+            out.append('<div class="tblwrap"><table class="tbl"><tr>%s</tr>%s</table></div>' % (th, tr))
+            rows.clear()
+
+    for line in md.split(chr(10)):
+        if line.strip().startswith("|"):
+            rows.append(line.strip().strip("|").split("|"))
+        else:
+            flush()
+            out.append(line)
+    flush()
+    return chr(10).join(out)
+
+
 def sync():
     """기록 파일을 docs/paper/ 로 복사 (원본은 paper/ — 페이지는 읽기 전용 사본만 본다)."""
     (SITE / "data").mkdir(parents=True, exist_ok=True)
@@ -46,9 +75,10 @@ def sync():
         if (D / n).exists():
             (SITE / "data" / n).write_bytes((D / n).read_bytes())
     for src, dst, title in (("daily_report.md", "daily.md", "일일 보고서"), ("investment_strategy.md", "strategy.md", "투자 전략")):
-        body = (D / src).read_text(encoding="utf-8")
+        body = md_tables_to_html((D / src).read_text(encoding="utf-8"))
         slug = dst[:-3]
-        head = chr(10).join(["---", "layout: page", 'title: "' + title + '"', "permalink: /paper/" + slug + "/", "---", ""])
+        css = '<link rel="stylesheet" href="{{ "/assets/paper.css" | relative_url }}">'
+        head = chr(10).join(["---", "layout: page", 'title: "' + title + '"', "permalink: /paper/" + slug + "/", "---", css, "", ""])
         (SITE / dst).write_text(head + body, encoding="utf-8")
 
 

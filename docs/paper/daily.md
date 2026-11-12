@@ -3,6 +3,8 @@ layout: page
 title: "일일 보고서"
 permalink: /paper/daily/
 ---
+<link rel="stylesheet" href="{{ "/assets/paper.css" | relative_url }}">
+
 # 일일 보고서
 
 ## 2026-11-12 (목) — Day 0, 거래 없음 (전략 승인 대기)
