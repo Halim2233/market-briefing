@@ -6,12 +6,12 @@
   python -I paper/sim.py status
 규칙은 코드에서 강제: 종목당 20% 상한, 최소 현금 20%, 공매도/레버리지/물타기 금지(보유 중 추가매수 거부),
 일 -2% / 누적 -5% 도달 시 신규 매수 거부, 휴장·시세 부재 시 거래 거부."""
-import argparse, csv, json, urllib.parse, urllib.request
+import argparse, csv, json, os, urllib.parse, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from datetime import timedelta, tzinfo
 
-D = Path(__file__).resolve().parent
+D = Path(os.environ.get("PAPER_DIR") or Path(__file__).resolve().parent)   # PAPER_DIR: 테스트용 격리 경로
 PF, TR, PERF = D / "portfolio.json", D / "trades.csv", D / "performance.json"
 
 
@@ -128,12 +128,14 @@ def cmd_mark(a):
         h["last_price"] = quote(s)["price"]
     q = quote("SPY")
     now = datetime.now(ET)
-    today = now.date().isoformat()
-    if pf["day_start_date"] != today:
-        pf["day_start_date"], pf["day_start_equity"] = today, equity(pf)
+    perf = json.loads(PERF.read_text(encoding="utf-8"))
+    # 금일 손익 기준 = 직전 거래일(시세 기준일 이전) 마지막 기록의 자산. 없으면 초기 자산.
+    session = q["time"].date().isoformat()
+    prior = [p for p in perf["equity_curve"] if p["price_time_et"][:10] < session]
+    pf["day_start_date"] = session
+    pf["day_start_equity"] = prior[-1]["equity"] if prior else INITIAL
     pf["total_equity"] = round(equity(pf), 2)
     pf["last_update_et"] = now.isoformat(timespec="seconds")
-    perf = json.loads(PERF.read_text(encoding="utf-8"))
     spy0 = pf["benchmark"]["start_price"]
     perf["equity_curve"].append({"time_et": pf["last_update_et"], "equity": pf["total_equity"],
                                  "spy": q["price"], "price_time_et": q["time"].isoformat(timespec="seconds")})
@@ -159,7 +161,10 @@ def cmd_trade(a):
     if a.qty <= 0 or a.qty != int(a.qty):
         raise SystemExit("수량은 양의 정수")
     if side == "BUY":
-        js = (D.parent / "docs" / "assets" / "paper.js").read_text(encoding="utf-8")
+        try:
+            js = (D.parent / "docs" / "assets" / "paper.js").read_text(encoding="utf-8")
+        except OSError:
+            js = '"%s":' % sym
         if '"%s":' % sym not in js and (sym + ":") not in js:
             print(f"[경고] {sym} 한글 이름이 docs/assets/paper.js 의 KO 목록에 없음 — 같은 커밋에 추가할 것 (CLAUDE.md 규칙)")
     q = quote(sym)
@@ -212,10 +217,69 @@ def cmd_status(a):
     print(json.dumps(load(), ensure_ascii=False, indent=2))
 
 
+def _rule_actions(pf):
+    """규칙 기반 매도 판단 (LLM 없음). 종가 ≤ 손절 → 전량, 종가 ≥ 목표 → 절반(1주면 전량)."""
+    acts = []
+    for s, h in pf["holdings"].items():
+        px = h["last_price"]
+        if h.get("stop") and px <= h["stop"]:
+            acts.append((s, h["qty"], f"손절 규칙: 종가 {px:.2f} ≤ 손절가 {h['stop']}", "stop"))
+        elif h.get("target") and px >= h["target"]:
+            acts.append((s, max(1, h["qty"] // 2), f"목표가 규칙: 종가 {px:.2f} ≥ 목표가 {h['target']} (절반 이익 실현)", "target"))
+    return acts
+
+
+def cmd_autorun(a):
+    """마감 후 자동 점검: 평가 → 손절/목표가 규칙 매도 → 일일 보고서 기록 → 동기화. 신규 매수는 하지 않는다."""
+    q = quote("SPY")
+    if q["regular_open"]:
+        print("정규장 진행 중 — 자동 점검 건너뜀"); return
+    session = q["time"].date().isoformat()
+    pf = load()
+    if pf.get("last_auto_session") == session:
+        print(f"{session} 거래일은 이미 처리됨(휴장/중복 실행) — 건너뜀"); return
+    if a.dry_run:
+        for s, h in pf["holdings"].items():
+            h["last_price"] = quote(s)["price"]
+        print(f"[dry-run] 거래일 {session}, 매도 예정:", _rule_actions(pf) or "없음"); return
+    cmd_mark(a)
+    pf = load()
+    done = []
+    for sym, qty, why, kind in _rule_actions(pf):
+        t = argparse.Namespace(cmd="sell", ticker=sym, qty=qty, reason=why, at_close=True, stop=None, target=None)
+        cmd_trade(t)
+        done.append(f"{sym} {qty}주 매도 — {why}")
+        if kind == "target":   # 같은 목표가로 매일 반복 매도되지 않도록 잔여분 목표 해제(손절은 유지, 사용자 재검토 대상)
+            pf2 = load()
+            if sym in pf2["holdings"]:
+                pf2["holdings"][sym]["target"] = None; save(pf2)
+    pf = load()
+    perf = json.loads(PERF.read_text(encoding="utf-8"))
+    eq, ret = pf["total_equity"], (pf["total_equity"] / INITIAL - 1) * 100
+    L = [f"\n## {session} (거래일) — 마감 후 자동 점검",
+         f"> 규칙 기반 자동 기록입니다(LLM 판단 없음). 시세: Yahoo Finance 종가 (SPY 기준 시각 {q['time'].isoformat(timespec='minutes')}), 갱신 {pf['last_update_et']}. 신규 매수·매도 판단은 자동화하지 않았습니다.",
+         f"- **포트폴리오:** 총자산 ${eq:,.2f} / 현금 ${pf['cash']:,.2f} ({pf['cash']/eq*100:.1f}%) / 누적 {ret:+.2f}% / 금일 {perf.get('today_return_pct')}%",
+         f"- **SPY 대비:** SPY {perf.get('spy_return_pct')}% · 초과 {perf.get('excess_vs_spy_pct')}%p · MDD(스냅샷) {perf.get('mdd_pct_snapshot_based')}%"]
+    for s, h in pf["holdings"].items():
+        pl = (h["last_price"] / h["avg_price"] - 1) * 100
+        stop = f"손절 {h['stop']}({(h['stop']/h['last_price']-1)*100:+.1f}%)" if h.get("stop") else "손절 없음"
+        tgt = f"목표 {h['target']}({(h['target']/h['last_price']-1)*100:+.1f}%)" if h.get("target") else "목표 해제"
+        L.append(f"- **{s}** {h['qty']}주 · 종가 {h['last_price']:,.2f} · 평단 대비 {pl:+.2f}% · {stop} · {tgt}")
+    L.append("- **자동 거래:** " + ("; ".join(done) if done else "없음 (손절·목표가 미도달)"))
+    if pf["halt_buys"]:
+        L.append("- ⚠ **리스크 규칙 발동:** 신규 매수 중단 상태(일 -2% 또는 누적 -5%). 전략 재검토 필요.")
+    with (D / "daily_report.md").open("a", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(L) + "\n")
+    pf["last_auto_session"] = session
+    save(pf); sync()
+    print("자동 점검 완료:", session, "| 자동 거래:", done or "없음")
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser(); sp = p.add_subparsers(dest="cmd", required=True)
     for n, f in (("init", cmd_init), ("mark", cmd_mark), ("sync", lambda a: sync()), ("status", cmd_status)):
         sp.add_parser(n).set_defaults(fn=f)
+    sa = sp.add_parser("autorun"); sa.set_defaults(fn=cmd_autorun); sa.add_argument("--dry-run", action="store_true")
     for n in ("buy", "sell"):
         s = sp.add_parser(n); s.set_defaults(fn=cmd_trade)
         s.add_argument("ticker"); s.add_argument("qty", type=float); s.add_argument("--reason", required=True)
