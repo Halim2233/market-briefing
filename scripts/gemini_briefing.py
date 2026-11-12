@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 KST = timezone(timedelta(hours=9))
-MODEL = os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"
+MODEL = os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash"   # 404면 아래 _pick_model()이 사용 가능한 flash 모델을 찾는다
 SEMI_TICKERS = {"SOXL", "SOXX", "SMH", "AMD", "TSM", "MU", "INTC", "ASML", "ARM", "QCOM", "AMAT", "LRCX", "MRVL", "NVDA", "AVGO"}
 
 # 기존 프롬프트(src/agents.py) 재사용 — import 시 부작용 없음(표준 라이브러리만 import)
@@ -18,7 +18,19 @@ agents = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(agents)
 
 
+def _pick_model(key: str) -> str | None:
+    """ListModels에서 generateContent를 지원하는 최신 일반 flash 모델을 고른다."""
+    import re
+    req = urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", headers={"x-goog-api-key": key})
+    names = [m["name"].split("/", 1)[1] for m in json.loads(urllib.request.urlopen(req, timeout=60).read()).get("models", [])
+             if "generateContent" in m.get("supportedGenerationMethods", [])]
+    ok = [n for n in names if re.fullmatch(r"gemini-[\d.]+-flash", n)]
+    ok.sort(key=lambda n: [int(x) for x in re.findall(r"\d+", n)], reverse=True)
+    return ok[0] if ok else None
+
+
 def gemini(system: str, user: str, max_tokens: int = 16000) -> str:
+    global MODEL
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         sys.exit(3)
@@ -45,6 +57,14 @@ def gemini(system: str, user: str, max_tokens: int = 16000) -> str:
             last = f"HTTP {e.code}: {e.read()[:200]!r}"
             if e.code in (429, 500, 503):
                 time.sleep(15 * (attempt + 1)); continue
+            if e.code == 404 and not os.environ.get("_MODEL_PICKED"):
+                os.environ["_MODEL_PICKED"] = "1"
+                picked = _pick_model(key)
+                if picked and picked != MODEL:
+                    print(f"[model] {MODEL} 사용 불가 → {picked} 로 전환")
+                    MODEL = picked
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
+                    continue
             break
         except Exception as e:   # 네트워크/파싱 오류
             last = str(e)[:200]
