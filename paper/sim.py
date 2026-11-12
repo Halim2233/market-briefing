@@ -124,13 +124,19 @@ def cmd_mark(a):
 
 
 def cmd_trade(a):
-    pf = load(); side = a.cmd.upper(); sym = a.ticker.upper()
+    pf = load(); side = a.cmd.upper(); sym = a.ticker.upper(); a.qty = int(a.qty)
     if a.qty <= 0 or a.qty != int(a.qty):
         raise SystemExit("수량은 양의 정수")
     q = quote(sym)
-    if not q["regular_open"]:
+    if a.at_close:
+        # 사용자 지시 백테스트성 체결: 정규장 밖에서 직전 정규장 종가로 가정 체결. 기록에 명시한다.
+        if q["regular_open"]:
+            raise SystemExit("정규장 중에는 --at-close 사용 불가")
+        q["source"] = "Yahoo Finance 직전 정규장 종가 — 장외 가정 체결(사용자 지시, 실제 체결 아님)"
+        a.reason = "[종가 가정 체결] " + a.reason
+    elif not q["regular_open"]:
         raise SystemExit(f"정규장 아님 — 거래 거부 (시세 시각 {q['time']})")
-    if (datetime.now(ET) - q["time"]).total_seconds() > 900:
+    elif (datetime.now(ET) - q["time"]).total_seconds() > 900:
         raise SystemExit("시세가 15분 이상 지연 — 데이터 불확실, 거래 보류")
     mp = q["price"]; slip = mp * SLIP_BPS / 1e4
     fill = round(mp + slip if side == "BUY" else mp - slip, 4)
@@ -178,5 +184,5 @@ if __name__ == "__main__":
     for n in ("buy", "sell"):
         s = sp.add_parser(n); s.set_defaults(fn=cmd_trade)
         s.add_argument("ticker"); s.add_argument("qty", type=float); s.add_argument("--reason", required=True)
-        s.add_argument("--stop", type=float); s.add_argument("--target", type=float)
+        s.add_argument("--at-close", action="store_true"); s.add_argument("--stop", type=float); s.add_argument("--target", type=float)
     a = p.parse_args(); a.fn(a)

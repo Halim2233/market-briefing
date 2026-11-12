@@ -1,16 +1,50 @@
 {
   "initial_capital": 10000.0,
-  "cash": 10000.0,
-  "holdings": {},
-  "total_equity": 10000.0,
+  "cash": 4578.93,
+  "holdings": {
+    "AMZN": {
+      "qty": 5,
+      "avg_price": 266.3031,
+      "last_price": 266.17,
+      "stop": 245.0,
+      "target": 295.0,
+      "opened_et": "2026-11-12T03:34:14-05:00"
+    },
+    "LLY": {
+      "qty": 1,
+      "avg_price": 1438.0086,
+      "last_price": 1437.29,
+      "stop": 1330.0,
+      "target": 1560.0,
+      "opened_et": "2026-11-12T03:34:15-05:00"
+    },
+    "JPM": {
+      "qty": 4,
+      "avg_price": 343.5617,
+      "last_price": 343.39,
+      "stop": 318.0,
+      "target": 372.0,
+      "opened_et": "2026-11-12T03:34:15-05:00"
+    },
+    "V": {
+      "qty": 3,
+      "avg_price": 425.7628,
+      "last_price": 425.55,
+      "stop": 392.0,
+      "target": 455.0,
+      "opened_et": "2026-11-12T03:34:16-05:00"
+    }
+  },
+  "total_equity": 9997.28,
   "created_et": "2026-11-12T03:24:07-05:00",
-  "start_date_et": null,
+  "start_date_et": "2026-11-12",
   "benchmark": {
     "symbol": "SPY",
-    "start_price": null
+    "start_price": 759.81,
+    "start_time_et": "2026-11-11T16:00:01-05:00"
   },
   "day_start_equity": 10000.0,
   "day_start_date": "2026-11-12",
   "halt_buys": false,
-  "last_update_et": "2026-11-12T03:24:08-05:00"
+  "last_update_et": "2026-11-12T03:34:35-05:00"
 }

@@ -5,14 +5,32 @@
       "equity": 10000.0,
       "spy": 759.81,
       "price_time_et": "2026-11-11T16:00:01-05:00"
+    },
+    {
+      "time_et": "2026-11-12T03:28:44-05:00",
+      "equity": 10000.0,
+      "spy": 759.81,
+      "price_time_et": "2026-11-11T16:00:01-05:00"
+    },
+    {
+      "time_et": "2026-11-12T03:34:18-05:00",
+      "equity": 9997.28,
+      "spy": 759.81,
+      "price_time_et": "2026-11-11T16:00:01-05:00"
+    },
+    {
+      "time_et": "2026-11-12T03:34:35-05:00",
+      "equity": 9997.28,
+      "spy": 759.81,
+      "price_time_et": "2026-11-11T16:00:01-05:00"
     }
   ],
-  "cumulative_return_pct": 0.0,
-  "today_return_pct": 0.0,
-  "mdd_pct_snapshot_based": 0,
-  "spy_return_pct": null,
-  "excess_vs_spy_pct": null,
-  "cash_ratio_pct": 100.0,
+  "cumulative_return_pct": -0.027,
+  "today_return_pct": -0.027,
+  "mdd_pct_snapshot_based": -0.027,
+  "spy_return_pct": 0.0,
+  "excess_vs_spy_pct": -0.027,
+  "cash_ratio_pct": 45.8,
   "halt_buys": false,
   "note": "MDD는 mark 호출 시점 스냅샷 기준(장중 변동 미반영)"
 }
