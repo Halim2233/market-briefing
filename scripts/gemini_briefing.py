@@ -101,6 +101,10 @@ def snapshot_md(rows):
 def ping():
     if not os.environ.get("GEMINI_API_KEY"):
         sys.exit(3)
+    key = os.environ["GEMINI_API_KEY"]
+    req = urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", headers={"x-goog-api-key": key})
+    ms = json.loads(urllib.request.urlopen(req, timeout=60).read()).get("models", [])
+    print("[ping] generateContent 지원 모델:", ", ".join(sorted(m["name"].split("/", 1)[1] for m in ms if "generateContent" in m.get("supportedGenerationMethods", []))), flush=True)
     print(f"[ping] 모델 {MODEL}")
     print("[ping] 응답:", gemini("한 단어로만 답하세요.", "OK 라고 답하세요.", 8000).strip()[:100], flush=True)
 
