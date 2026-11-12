@@ -7,6 +7,15 @@ layout: default
   <p class="lead">나스닥100과 반도체를 중심으로 뉴스·차트·리스크를 한 번에 정리합니다.</p>
 </section>
 
+<section class="list">
+  <a class="card-link latest" href="{{ '/paper/' | relative_url }}">
+    <span class="badge">NEW</span>
+    <span class="d">PAPER TRADING</span>
+    <span class="t">미국 주식 1개월 모의투자 기록</span>
+    <span class="arrow">→</span>
+  </a>
+</section>
+
 {% assign reports = site.pages | where_exp: "p", "p.path contains 'reports/'" | sort: "path" | reverse %}
 <section class="list">
   {% for r in reports %}

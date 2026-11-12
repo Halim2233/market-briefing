@@ -1,0 +1,18 @@
+{
+  "equity_curve": [
+    {
+      "time_et": "2026-11-12T03:24:08-05:00",
+      "equity": 10000.0,
+      "spy": 759.81,
+      "price_time_et": "2026-11-11T16:00:01-05:00"
+    }
+  ],
+  "cumulative_return_pct": 0.0,
+  "today_return_pct": 0.0,
+  "mdd_pct_snapshot_based": 0,
+  "spy_return_pct": null,
+  "excess_vs_spy_pct": null,
+  "cash_ratio_pct": 100.0,
+  "halt_buys": false,
+  "note": "MDD는 mark 호출 시점 스냅샷 기준(장중 변동 미반영)"
+}

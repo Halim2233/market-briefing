@@ -1,0 +1,19 @@
+#paper .tiles { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 640px) { #paper .tiles { grid-template-columns: repeat(4, 1fr); } }
+#paper h2 { margin: 30px 0 10px; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
+.tblwrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl th, .tbl td { padding: 9px 12px; text-align: right; border-bottom: 1px solid var(--line); }
+.tbl th { color: var(--muted); font-weight: 600; font-size: 12px; background: var(--surface-2); }
+.tbl th:first-child, .tbl td:first-child { text-align: left; font-weight: 700; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl td.reason { white-space: normal; min-width: 240px; text-align: left; color: var(--muted); }
+.chart { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 10px 6px; box-shadow: var(--shadow); }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart .legend { display: flex; gap: 16px; padding: 4px 8px 8px; font-size: 12.5px; color: var(--muted); }
+.chart .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.empty { padding: 22px; text-align: center; color: var(--muted); font-size: 14px; }
+.note { margin: 22px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.warn { background: var(--down-soft); border-radius: 12px; padding: 10px 14px; font-size: 13.5px; margin: 12px 0; }
+.bar { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: var(--surface-2); margin: 8px 0 4px; }
+.bar span { display: block; height: 100%; }
