@@ -1,18 +1,24 @@
 """LLM 에이전트들: 분석가 / 차트 트레이더 / 리스크 검토자 / 종합 에이전트."""
 import json
 import re
-
-import anthropic
-
-_client = anthropic.Anthropic()  # ANTHROPIC_API_KEY 환경변수 사용
+import shutil
+import subprocess
 
 
 def _ask(model: str, system: str, user: str, max_tokens: int = 8000) -> str:
-    resp = _client.messages.create(
-        model=model, max_tokens=max_tokens, system=system,
-        messages=[{"role": "user", "content": user}],
+    """Claude Code CLI(`claude -p`)로 호출한다. 인증은 CLAUDE_CODE_OAUTH_TOKEN(구독) 또는
+    ANTHROPIC_API_KEY 환경변수를 CLI가 알아서 사용. max_tokens는 CLI 방식에서는 쓰지 않는다."""
+    exe = shutil.which("claude")
+    if not exe:
+        raise RuntimeError("claude CLI를 찾을 수 없습니다. npm i -g @anthropic-ai/claude-code")
+    r = subprocess.run(
+        [exe, "-p", "--model", model, "--system-prompt", system,
+         "--tools", "", "--max-turns", "1", "--output-format", "text"],
+        input=user, capture_output=True, text=True, encoding="utf-8", timeout=900,
     )
-    return "".join(b.text for b in resp.content if b.type == "text")
+    if r.returncode != 0:
+        raise RuntimeError(f"claude -p 실패 (code {r.returncode}): {r.stderr.strip()[:500] or r.stdout.strip()[:500]}")
+    return r.stdout
 
 
 def _extract_json(text: str):

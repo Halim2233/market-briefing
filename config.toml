@@ -1,4 +1,4 @@
-model = "claude-sonnet-5-5"
+model = "sonnet"   # claude CLI 모델 별칭 (sonnet | opus | haiku) 또는 전체 이름
 
 # 전체 시장 브리핑용 지수/지표
 [indices]
