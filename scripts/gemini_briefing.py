@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 KST = timezone(timedelta(hours=9))
-MODELS = [m for m in [os.environ.get("GEMINI_MODEL")] if m] + ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3-flash-preview", "gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]
+MODELS = [m for m in [os.environ.get("GEMINI_MODEL")] if m] + ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.7-flash", "gemini-3-flash-preview", "gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]
 MODEL_IDX = 0
 MODEL = MODELS[0]   # 표기용 — 실제 사용 모델은 MODELS[MODEL_IDX]
 SEMI_TICKERS = {"SOXL", "SOXX", "SMH", "AMD", "TSM", "MU", "INTC", "ASML", "ARM", "QCOM", "AMAT", "LRCX", "MRVL", "NVDA", "AVGO"}
