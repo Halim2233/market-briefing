@@ -81,8 +81,9 @@ def main():
         sys.exit("data/*.json 없음 — scripts/collect.py 먼저 실행")
     data = json.loads(files[-1].read_text(encoding="utf-8"))
     date = data["generated_at_kst"][:10]
-    out = ROOT / "docs" / "reports" / f"{date}.md"
-    if out.exists() and "generator: gemini" not in out.read_text(encoding="utf-8") and not force:
+    test_out = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--out=")), None)   # 시험용: 다른 경로에 저장
+    out = Path(test_out) if test_out else ROOT / "docs" / "reports" / f"{date}.md"
+    if not test_out and out.exists() and "generator: gemini" not in out.read_text(encoding="utf-8") and not force:
         print(f"{out.name} 이미 존재(수동 작성본) — 덮어쓰지 않음"); return
     if not data["snapshot"] or not data["news"]:
         sys.exit("스냅샷/뉴스가 비어 있음 — 데이터 부족으로 브리핑 생성 중단")

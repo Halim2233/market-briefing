@@ -6,7 +6,12 @@ name: auto-daily
 on:
   schedule:
     - cron: "30 21 * * 1-5"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      briefing_test:
+        description: "true면 브리핑을 reports에 저장하지 않고 아티팩트로만 만든다(Gemini 시험용)"
+        default: "false"
+
 
 permissions:
   contents: write
@@ -40,7 +45,19 @@ jobs:
             echo "::warning::GEMINI_API_KEY 시크릿이 없어 브리핑 생성을 건너뜁니다."
             exit 0
           fi
-          python -I scripts/gemini_briefing.py
+          if [ "${{ inputs.briefing_test }}" = "true" ]; then
+            mkdir -p test_out
+            python -I scripts/gemini_briefing.py --out=test_out/briefing-test.md
+          else
+            python -I scripts/gemini_briefing.py
+          fi
+
+      - name: 시험 브리핑 아티팩트 업로드
+        if: ${{ inputs.briefing_test == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: briefing-test
+          path: test_out/
 
       - name: 모의투자 마감 점검 (평가 · 손절/목표가 규칙 · 일일 기록)
         run: python -I paper/sim.py autorun
