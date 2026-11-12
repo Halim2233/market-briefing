@@ -1,5 +1,13 @@
 title: 미국 증시 데일리 브리핑
-description: 나스닥100 중심 AI 멀티에이전트 자동 브리핑
-theme: minima
+description: 나스닥100·반도체 중심 AI 일일 시장 브리핑
+lang: ko
+
+# 프로젝트 사이트는 /저장소이름 아래에서 서비스되므로 baseurl 이 필요합니다.
+url: "https://halim2233.github.io"
+baseurl: "/market-briefing"
+
 markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
 timezone: Asia/Seoul

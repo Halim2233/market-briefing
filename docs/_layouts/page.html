@@ -1,0 +1,13 @@
+---
+layout: default
+---
+<article class="report">
+  <div class="report-head">
+    <a class="back" href="{{ '/' | relative_url }}">← 전체 리포트</a>
+    <h1>{{ page.title }}</h1>
+    {% if page.date %}<p class="stamp">{{ page.date | date: "%Y.%m.%d" }} 업데이트</p>{% endif %}
+  </div>
+  <div class="report-body">
+    {{ content }}
+  </div>
+</article>

@@ -1,0 +1,186 @@
+/* ───────── 디자인 토큰 ─────────
+   등락 색은 한국 관례(상승=빨강, 하락=파랑). 미국식(상승=초록)으로 바꾸려면
+   --up / --down 값만 서로 바꾸면 됩니다. */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #f0f2f6;
+  --text: #15181e;
+  --muted: #667085;
+  --line: #e6e9ef;
+  --accent: #3b5bfd;
+  --accent-soft: #eef1ff;
+  --up: #e5383b;
+  --down: #2563eb;
+  --up-soft: #fdecec;
+  --down-soft: #e8f0fe;
+  --flat-soft: #eceff4;
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 4px 16px rgba(16, 24, 40, .04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c0e12;
+    --surface: #151922;
+    --surface-2: #1b202b;
+    --text: #e8ebf1;
+    --muted: #98a2b3;
+    --line: #262c38;
+    --accent: #8ba0ff;
+    --accent-soft: #1c2340;
+    --up: #ff6b6e;
+    --down: #6ea2ff;
+    --up-soft: #3a1b1d;
+    --down-soft: #172641;
+    --flat-soft: #222733;
+    --shadow: none;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  letter-spacing: -0.01em;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ───────── 상단 바 ───────── */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top);
+}
+.topbar-in { display: flex; align-items: center; justify-content: space-between; height: 52px; }
+.brand { color: var(--text); font-weight: 700; font-size: 15px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+.brand:hover { text-decoration: none; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.tag { font-size: 11px; font-weight: 600; letter-spacing: .08em; color: var(--muted); }
+
+main { padding-bottom: 24px; }
+
+/* ───────── 홈 ───────── */
+.hero { padding: 44px 0 20px; }
+.eyebrow { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: .14em; color: var(--accent); }
+.hero h1 { margin: 0 0 14px; font-size: clamp(32px, 8vw, 46px); line-height: 1.18; letter-spacing: -0.035em; font-weight: 800; }
+.lead { margin: 0; color: var(--muted); font-size: 16px; }
+.list { display: grid; gap: 10px; margin: 22px 0 8px; }
+.card-link {
+  position: relative; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 18px; color: var(--text); box-shadow: var(--shadow);
+  transition: transform .15s ease, border-color .15s ease;
+}
+.card-link:hover { text-decoration: none; transform: translateY(-1px); border-color: var(--accent); }
+.card-link .d { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .03em; }
+.card-link .t { grid-column: 1; font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
+.card-link .arrow { grid-row: 1 / span 2; grid-column: 2; color: var(--muted); font-size: 18px; }
+.card-link.latest { background: linear-gradient(135deg, var(--accent-soft), var(--surface)); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); padding-top: 20px; padding-bottom: 20px; }
+.card-link.latest .t { font-size: 19px; }
+.badge { position: absolute; top: -9px; left: 16px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 99px; letter-spacing: .04em; }
+
+/* ───────── 리포트 헤더 ───────── */
+.report-head { padding: 28px 0 8px; }
+.back { font-size: 13px; color: var(--muted); font-weight: 500; }
+.report-head h1 { margin: 10px 0 6px; font-size: clamp(26px, 6.4vw, 36px); line-height: 1.25; letter-spacing: -0.035em; font-weight: 800; }
+.stamp { margin: 0; font-size: 13px; color: var(--muted); }
+
+/* ───────── 본문 ───────── */
+.report-body { padding-bottom: 12px; }
+.report-body > blockquote {
+  margin: 18px 0 8px; padding: 12px 16px;
+  background: var(--surface-2); border-radius: 12px; border: 0;
+  color: var(--muted); font-size: 13.5px; line-height: 1.6;
+}
+.report-body blockquote p { margin: 0; }
+.report-body h2 {
+  margin: 44px 0 14px; font-size: 22px; line-height: 1.3; letter-spacing: -0.03em; font-weight: 800;
+  display: flex; align-items: center; gap: 10px; scroll-margin-top: 112px;
+}
+.report-body h2::before { content: ""; width: 5px; height: 22px; border-radius: 3px; background: var(--accent); flex: none; }
+.report-body h3 { margin: 28px 0 10px; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+.report-body p { margin: 10px 0; }
+.report-body strong { font-weight: 700; }
+.report-body ul { margin: 8px 0 12px; padding-left: 1.15em; }
+.report-body li { margin: 6px 0; padding-left: 2px; }
+.report-body li::marker { color: var(--muted); }
+.report-body hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0; }
+.report-body code { background: var(--surface-2); padding: 1px 6px; border-radius: 6px; font-size: .9em; }
+
+/* 등락 색 */
+.up { color: var(--up); font-weight: 700; }
+.down { color: var(--down); font-weight: 700; }
+
+/* ───────── 목차 칩 ───────── */
+.toc {
+  position: sticky; top: 52px; z-index: 15; margin: 16px -20px 0; padding: 10px 20px;
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.toc::-webkit-scrollbar { display: none; }
+.toc a {
+  flex: none; padding: 6px 13px; border-radius: 99px; font-size: 13px; font-weight: 600; white-space: nowrap;
+  background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+}
+.toc a:hover, .toc a.on { text-decoration: none; background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+
+/* ───────── 스냅샷 타일 ───────── */
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0 8px; }
+@media (min-width: 560px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 13px 15px; box-shadow: var(--shadow); }
+.tile .n { font-size: 12.5px; color: var(--muted); font-weight: 600; line-height: 1.3; }
+.tile .v { margin-top: 5px; font-size: 19px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.tile .p { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 99px; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .p.up { background: var(--up-soft); }
+.tile .p.down { background: var(--down-soft); }
+.tile .p.flat { background: var(--flat-soft); color: var(--muted); }
+
+/* ───────── 카드 (이슈 / 종목) ───────── */
+.item-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px 8px; margin: 12px 0; box-shadow: var(--shadow); }
+.item-card > .ct { margin: 0 0 6px; font-size: 16.5px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.4; }
+.item-card ul { margin: 4px 0 8px; }
+.item-card li { font-size: 15px; }
+
+/* 결론(강세/약세/중립) 태그 */
+li.tone { list-style: none; margin-left: -1.15em; padding: 9px 12px; border-radius: 10px; font-size: 14.5px; }
+li.tone::marker { content: ""; }
+li.tone.bull { background: var(--up-soft); }
+li.tone.bear { background: var(--down-soft); }
+li.tone.neutral { background: var(--flat-soft); }
+li.tone.bull strong:last-child { color: var(--up); }
+li.tone.bear strong:last-child { color: var(--down); }
+
+/* ───────── 접기 (뉴스 출처) ───────── */
+details.fold { margin-top: 40px; border-top: 1px solid var(--line); }
+details.fold > summary {
+  list-style: none; cursor: pointer; padding: 18px 0 10px; font-size: 20px; font-weight: 800; letter-spacing: -0.03em;
+  display: flex; align-items: center; justify-content: space-between;
+}
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after { content: "펼치기 ▾"; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+details.fold[open] > summary::after { content: "접기 ▴"; }
+details.fold li { font-size: 14px; color: var(--muted); }
+details.fold li a { font-weight: 600; }
+
+/* ───────── 푸터 ───────── */
+.foot { padding: 28px 20px 48px; font-size: 12.5px; color: var(--muted); line-height: 1.6; border-top: 1px solid var(--line); margin-top: 24px; }
+
+@media (min-width: 760px) {
+  body { font-size: 17px; }
+  .report-body h2 { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .card-link { transition: none; } }
