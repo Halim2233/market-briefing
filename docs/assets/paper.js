@@ -4,6 +4,11 @@
   var base = root.getAttribute("data-base");
   var COLORS = ["#3b5bfd", "#e5383b", "#12b886", "#f59f00", "#9c36b5", "#0ca5c9"];
 
+  var KO = { AMZN: "아마존", LLY: "일라이 릴리", JPM: "JP모건", V: "비자", AVGO: "브로드컴", NVDA: "엔비디아", AMD: "AMD",
+    MSFT: "마이크로소프트", GOOGL: "알파벳", META: "메타", AAPL: "애플", TSLA: "테슬라", "BRK-B": "버크셔 해서웨이", COST: "코스트코",
+    SPY: "S&P500 ETF", QQQ: "나스닥100 ETF", XLV: "헬스케어 ETF", GLD: "금 ETF" };
+  var nm = function (t) { return KO[t] ? t + " <small class=\"ko\">(" + KO[t] + ")</small>" : t; };
+
   var $ = function (n) { return n == null ? "–" : n; };
   var usd = function (n) { return n == null ? "–" : "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   var pct = function (n, d) { return n == null ? "–" : (n > 0 ? "+" : "") + Number(n).toFixed(d == null ? 2 : d) + "%"; };
@@ -89,7 +94,7 @@
       var segs = hold.map(function (x, i) { return [x.sym, x.qty * x.last_price / eq * 100, COLORS[i % COLORS.length]]; });
       segs.push(["현금", pf.cash / eq * 100, "var(--line)"]);
       h += '<div class="bar">' + segs.map(function (s) { return '<span style="width:' + s[1] + "%;background:" + s[2] + '" title="' + s[0] + '"></span>'; }).join("") + "</div>" +
-        '<p class="note" style="margin-top:4px">' + segs.map(function (s) { return s[0] + " " + s[1].toFixed(1) + "%"; }).join(" · ") + "</p>";
+        '<p class="note" style="margin-top:4px">' + segs.map(function (s) { return (KO[s[0]] ? s[0] + " (" + KO[s[0]] + ")" : s[0]) + " " + s[1].toFixed(1) + "%"; }).join(" · ") + "</p>";
     } else h += '<div class="tblwrap"><div class="empty">보유 종목이 없습니다 (현금 100%).</div></div>';
 
     h += "<h2>보유 종목</h2>";
@@ -97,7 +102,7 @@
       h += '<div class="tblwrap"><table class="tbl"><tr><th>종목</th><th>수량</th><th>평균단가</th><th>현재가</th><th>평가금액</th><th>손익</th><th>손절</th><th>목표</th></tr>' +
         hold.map(function (x) {
           var pl = (x.last_price / x.avg_price - 1) * 100;
-          return "<tr><td>" + x.sym + "</td><td>" + x.qty + "</td><td>" + usd(x.avg_price) + "</td><td>" + usd(x.last_price) + "</td><td>" + usd(x.qty * x.last_price) +
+          return "<tr><td>" + nm(x.sym) + "</td><td>" + x.qty + "</td><td>" + usd(x.avg_price) + "</td><td>" + usd(x.last_price) + "</td><td>" + usd(x.qty * x.last_price) +
             '</td><td class="' + cls(pl) + '">' + pct(pl) + "</td><td>" + $(x.stop) + "</td><td>" + $(x.target) + "</td></tr>";
         }).join("") + "</table></div>";
     } else h += '<div class="tblwrap"><div class="empty">없음</div></div>';
@@ -106,7 +111,7 @@
     if (trades.length) {
       h += '<div class="tblwrap"><table class="tbl"><tr><th>일시(ET)</th><th>종목</th><th>구분</th><th>수량</th><th>시장가</th><th>체결가</th><th>금액</th><th>슬리피지</th><th>잔액</th><th>실현손익</th><th>손절/목표</th><th>이유</th></tr>' +
         trades.slice().reverse().map(function (t) {
-          return "<tr><td>" + esc(t.datetime_et.replace("T", " ").slice(0, 16)) + "</td><td>" + esc(t.ticker) + '</td><td class="' + (t.side === "BUY" ? "up" : "down") + '">' + (t.side === "BUY" ? "매수" : "매도") + "</td><td>" + t.qty + "</td><td>" + usd(t.market_price) + "</td><td>" + usd(t.fill_price) + "</td><td>" + usd(t.amount) + "</td><td>" + usd(t.est_slippage) + "</td><td>" + usd(t.cash_after) + "</td><td>" + (t.realized_pnl ? usd(t.realized_pnl) : "–") + "</td><td>" + esc(t.stop || "–") + " / " + esc(t.target || "–") + '</td><td class="reason">' + esc(t.reason) + "</td></tr>";
+          return "<tr><td>" + esc(t.datetime_et.replace("T", " ").slice(0, 16)) + "</td><td>" + nm(esc(t.ticker)) + '</td><td class="' + (t.side === "BUY" ? "up" : "down") + '">' + (t.side === "BUY" ? "매수" : "매도") + "</td><td>" + t.qty + "</td><td>" + usd(t.market_price) + "</td><td>" + usd(t.fill_price) + "</td><td>" + usd(t.amount) + "</td><td>" + usd(t.est_slippage) + "</td><td>" + usd(t.cash_after) + "</td><td>" + (t.realized_pnl ? usd(t.realized_pnl) : "–") + "</td><td>" + esc(t.stop || "–") + " / " + esc(t.target || "–") + '</td><td class="reason">' + esc(t.reason) + "</td></tr>";
         }).join("") + "</table></div>";
     } else h += '<div class="tblwrap"><div class="empty">아직 거래가 없습니다.</div></div>';
     root.innerHTML = h;
