@@ -26,10 +26,6 @@ url = "https://www.cnbc.com/id/20910258/device/rss/rss.html"
 name = "MarketWatch Top Stories"
 url = "https://feeds.content.dowjones.io/public/rss/mw_topstories"
 
-[[feeds]]
-name = "Yahoo Finance"
-url = "https://finance.yahoo.com/news/rssindex"
-
 [news]
 max_age_hours = 30         # 이 시간보다 오래된 기사는 제외
 max_items_to_analyze = 70  # LLM에 넘길 최대 기사 수
