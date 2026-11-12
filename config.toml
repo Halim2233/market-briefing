@@ -1,0 +1,36 @@
+model = "claude-sonnet-5-5"
+
+# 전체 시장 브리핑용 지수/지표
+[indices]
+"^NDX" = "나스닥100"
+"^GSPC" = "S&P500"
+"^DJI" = "다우존스"
+"^IXIC" = "나스닥 종합"
+"^VIX" = "VIX(공포지수)"
+"^TNX" = "미 10년물 금리"
+
+# 차트 분석 대상 (나스닥100 중심, 자유롭게 수정)
+[chart]
+watchlist = ["QQQ", "SPY", "NVDA", "MSFT", "AAPL", "GOOGL", "AMZN", "META", "AVGO", "TSLA"]
+
+# 뉴스 RSS (watchlist 종목별 Yahoo Finance 뉴스는 자동 추가됨)
+[[feeds]]
+name = "CNBC Top News"
+url = "https://www.cnbc.com/id/100003114/device/rss/rss.html"
+
+[[feeds]]
+name = "CNBC Markets"
+url = "https://www.cnbc.com/id/20910258/device/rss/rss.html"
+
+[[feeds]]
+name = "MarketWatch Top Stories"
+url = "https://feeds.content.dowjones.io/public/rss/mw_topstories"
+
+[[feeds]]
+name = "Yahoo Finance"
+url = "https://finance.yahoo.com/news/rssindex"
+
+[news]
+max_age_hours = 30         # 이 시간보다 오래된 기사는 제외
+max_items_to_analyze = 70  # LLM에 넘길 최대 기사 수
+min_importance = 6         # 이 점수(0~10) 미만은 리포트에서 제외
