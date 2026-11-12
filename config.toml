@@ -6,12 +6,16 @@ model = "sonnet"   # claude CLI 모델 별칭 (sonnet | opus | haiku) 또는 전
 "^GSPC" = "S&P500"
 "^DJI" = "다우존스"
 "^IXIC" = "나스닥 종합"
+"^SOX" = "필라델피아 반도체지수"
 "^VIX" = "VIX(공포지수)"
 "^TNX" = "미 10년물 금리"
 
 # 차트 분석 대상 (나스닥100 중심, 자유롭게 수정)
 [chart]
 watchlist = ["QQQ", "SPY", "NVDA", "MSFT", "AAPL", "GOOGL", "AMZN", "META", "AVGO", "TSLA"]
+
+# 반도체 섹션 (SOXL은 반도체 3배 레버리지 ETF, SOXX/SMH는 기초 반도체 ETF)
+semis = ["SOXL", "SOXX", "SMH", "AMD", "TSM", "MU", "INTC", "ASML", "ARM", "QCOM", "AMAT", "LRCX", "MRVL"]
 
 # 뉴스 RSS (watchlist 종목별 Yahoo Finance 뉴스는 자동 추가됨)
 [[feeds]]
@@ -28,5 +32,5 @@ url = "https://feeds.content.dowjones.io/public/rss/mw_topstories"
 
 [news]
 max_age_hours = 30         # 이 시간보다 오래된 기사는 제외
-max_items_to_analyze = 70  # LLM에 넘길 최대 기사 수
+max_items_to_analyze = 100  # LLM에 넘길 최대 기사 수
 min_importance = 6         # 이 점수(0~10) 미만은 리포트에서 제외

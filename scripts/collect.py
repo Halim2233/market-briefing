@@ -54,7 +54,7 @@ def _parse_feed(feed: dict) -> list[dict]:
 
 def collect_news(cfg: dict) -> list[dict]:
     feeds = list(cfg["feeds"])
-    for t in cfg["chart"]["watchlist"]:
+    for t in cfg["chart"]["watchlist"] + cfg["chart"].get("semis", []):
         feeds.append({"name": f"Yahoo Finance [{t}]",
                       "url": f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={t}&region=US&lang=en-US"})
     with ThreadPoolExecutor(8) as ex:
@@ -169,18 +169,20 @@ def main():
     with ThreadPoolExecutor(8) as ex:
         snaps = list(ex.map(lambda kv: snapshot(*kv), cfg["indices"].items()))
         charts = list(ex.map(analyze, cfg["chart"]["watchlist"]))
+        semis = list(ex.map(analyze, cfg["chart"].get("semis", [])))
     news = collect_news(cfg)
     now = datetime.now(KST)
     data = {
         "generated_at_kst": now.strftime("%Y-%m-%d %H:%M"),
         "snapshot": [s for s in snaps if s],
         "charts": [c for c in charts if c],
+        "semis": [c for c in semis if c],
         "news": news,
     }
     out = ROOT / "data" / f"{now:%Y-%m-%d}.json"
     out.parent.mkdir(exist_ok=True)
     out.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"[done] 스냅샷 {len(data['snapshot'])}, 차트 {len(data['charts'])}종목, 뉴스 {len(news)}건 → {out}")
+    print(f"[done] 스냅샷 {len(data['snapshot'])}, 차트 {len(data['charts'])}종목, 반도체 {len(data['semis'])}종목, 뉴스 {len(news)}건 → {out}")
 
 
 if __name__ == "__main__":
