@@ -77,6 +77,17 @@ SEMI_SYS = """당신은 반도체 섹터 애널리스트 겸 차트 트레이더
 투자 권유 문구 금지."""
 
 
+# 기존 프롬프트에 덧붙이는 규칙 (웹 디자인이 읽는 형식 + 수치 방향 오류 방지)
+agents.TRADER_SYS += """
+형식 규칙: 종목 제목은 '### ' 헤더가 아니라 굵은 글씨 한 줄 **티커 종가 (+등락%)** 로 쓰고(예: **QQQ 690.38 (+2.31%)**), 제목 다음에 반드시 빈 줄을 둔 뒤 '- ' 불릿으로 작성. 각 종목 마지막 불릿은 정확히 '- 결론: **강세|중립|약세, 확신도 낮음|중간|높음.**' 형식."""
+agents.SYNTH_SYS += """
+정확성 규칙: '지수 방향 요약'에 적힌 상승/하락 방향과 수치를 그대로 따를 것. 특히 VIX 등 지표의 방향을 바꾸거나 반대로 서술하지 말 것. 자료에 없는 사건·원인을 추가하지 말고, 뉴스 요약에 근거한 내용만 쓸 것."""
+
+
+def direction_lines(rows):
+    return chr(10).join(f"- {r['name']}: {'상승' if r['change_pct'] > 0 else '하락' if r['change_pct'] < 0 else '보합'} {r['change_pct']:+.2f}% (종가 {r['close']:,})" for r in rows)
+
+
 def snapshot_md(rows):
     out = []
     for r in rows:
@@ -138,7 +149,8 @@ def main():
         ensure_ascii=False), 12000)
     risk_md = agents.run_risk(MODEL, news_md, trader_md + "\n\n" + semi_md)
     snap = snapshot_md(data["snapshot"])
-    body = agents.run_synth(MODEL, snap, news_md, trader_md + "\n\n" + semi_md, risk_md)
+    dirs = chr(10) * 2 + "### 지수 방향 요약 (코드 계산, 이 방향을 따를 것)" + chr(10) + direction_lines(data["snapshot"])
+    body = agents.run_synth(MODEL, snap + dirs, news_md, trader_md + "\n\n" + semi_md, risk_md)
 
     now = datetime.now(KST)
     sources = "\n".join(f"- {n['ko_title']} — [{n['source']}]({n['link']}) · {n['sentiment']} · 중요도 {n['importance']}" for n in important)
