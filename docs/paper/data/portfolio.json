@@ -44,7 +44,8 @@
     "start_time_et": "2026-11-11T16:00:01-05:00"
   },
   "day_start_equity": 10000.0,
-  "day_start_date": "2026-11-12",
+  "day_start_date": "2026-11-11",
   "halt_buys": false,
-  "last_update_et": "2026-11-12T03:34:35-05:00"
+  "last_update_et": "2026-11-12T04:07:03-05:00",
+  "last_auto_session": "2026-11-11"
 }
