@@ -127,6 +127,10 @@ def cmd_trade(a):
     pf = load(); side = a.cmd.upper(); sym = a.ticker.upper(); a.qty = int(a.qty)
     if a.qty <= 0 or a.qty != int(a.qty):
         raise SystemExit("수량은 양의 정수")
+    if side == "BUY":
+        js = (D.parent / "docs" / "assets" / "paper.js").read_text(encoding="utf-8")
+        if '"%s":' % sym not in js and (sym + ":") not in js:
+            print(f"[경고] {sym} 한글 이름이 docs/assets/paper.js 의 KO 목록에 없음 — 같은 커밋에 추가할 것 (CLAUDE.md 규칙)")
     q = quote(sym)
     if a.at_close:
         # 사용자 지시 백테스트성 체결: 정규장 밖에서 직전 정규장 종가로 가정 체결. 기록에 명시한다.
