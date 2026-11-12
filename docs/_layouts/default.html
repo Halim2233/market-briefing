@@ -14,7 +14,9 @@
   <header class="topbar">
     <div class="wrap topbar-in">
       <a class="brand" href="{{ '/' | relative_url }}"><span class="dot"></span>US Market Briefing</a>
-      <span class="tag">NASDAQ · SEMIS</span>
+      <nav class="topnav">
+        <a class="navbtn{% if page.url contains '/paper' %} on{% endif %}" href="{{ '/paper/' | relative_url }}">📈 모의투자 기록</a>
+      </nav>
     </div>
   </header>
 

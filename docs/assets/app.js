@@ -171,3 +171,33 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
   else run();
 })();
+
+
+/* 홈 목록 페이지네이션 (HTML에는 전부 있고, 화면에서만 나눠 보여준다 — JS 실패 시 전체 표시) */
+(function () {
+  var box = document.getElementById('reports'), pager = document.getElementById('pager');
+  if (!box || !pager) return;
+  var cards = Array.prototype.slice.call(box.querySelectorAll('.card-link'));
+  var per = parseInt(box.getAttribute('data-per-page'), 10) || 10;
+  var pages = Math.ceil(cards.length / per);
+  if (pages <= 1) return;
+  function go(n, push) {
+    n = Math.max(1, Math.min(pages, n));
+    cards.forEach(function (c, i) { c.style.display = (i >= (n - 1) * per && i < n * per) ? '' : 'none'; });
+    pager.innerHTML = '';
+    function btn(label, target, opts) {
+      var b = document.createElement('button');
+      b.textContent = label; b.type = 'button';
+      if (opts && opts.on) { b.className = 'on'; b.setAttribute('aria-current', 'page'); }
+      if (opts && opts.dis) b.disabled = true;
+      b.onclick = function () { go(target, true); window.scrollTo(0, 0); };
+      pager.appendChild(b);
+    }
+    btn('‹', n - 1, { dis: n === 1 });
+    for (var i = 1; i <= pages; i++) btn(String(i), i, { on: i === n });
+    btn('›', n + 1, { dis: n === pages });
+    if (push) { try { history.replaceState(null, '', n === 1 ? location.pathname : '#p' + n); } catch (e) {} }
+  }
+  var m = /^#p(\d+)$/.exec(location.hash);
+  go(m ? parseInt(m[1], 10) : 1, false);
+})();

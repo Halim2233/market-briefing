@@ -184,3 +184,13 @@ details.fold li a { font-weight: 600; }
   .report-body h2 { font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .card-link { transition: none; } }
+
+/* ───────── 상단 메뉴 · 페이지네이션 ───────── */
+.topnav { display: flex; gap: 8px; }
+.navbtn { font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); border: 1px solid transparent; white-space: nowrap; }
+.navbtn:hover, .navbtn.on { text-decoration: none; border-color: var(--accent); }
+.pager { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 18px 0 8px; }
+.pager button { min-width: 38px; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.pager button:hover:not(:disabled) { border-color: var(--accent); }
+.pager button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pager button:disabled { opacity: .4; cursor: default; }
