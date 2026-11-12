@@ -47,7 +47,8 @@ def sync():
             (SITE / "data" / n).write_bytes((D / n).read_bytes())
     for src, dst, title in (("daily_report.md", "daily.md", "일일 보고서"), ("investment_strategy.md", "strategy.md", "투자 전략")):
         body = (D / src).read_text(encoding="utf-8")
-        head = "---" + chr(10) + "layout: page" + chr(10) + 'title: "' + title + '"' + chr(10) + "---" + chr(10)
+        slug = dst[:-3]
+        head = chr(10).join(["---", "layout: page", 'title: "' + title + '"', "permalink: /paper/" + slug + "/", "---", ""])
         (SITE / dst).write_text(head + body, encoding="utf-8")
 
 

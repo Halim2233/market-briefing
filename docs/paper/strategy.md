@@ -1,6 +1,7 @@
 ---
 layout: page
 title: "투자 전략"
+permalink: /paper/strategy/
 ---
 # 투자 전략 (v0.1 — 사용자 승인 대기, 거래 미실행)
 

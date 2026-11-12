@@ -1,6 +1,7 @@
 ---
 layout: page
 title: "일일 보고서"
+permalink: /paper/daily/
 ---
 # 일일 보고서
 
