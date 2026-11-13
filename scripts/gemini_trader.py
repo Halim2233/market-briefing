@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PAPER = Path(os.environ.get("PAPER_DIR") or ROOT / "paper")
 MAX_POS, MIN_CASH, SLIP = 0.20, 0.20, 0.0005
 MAX_BUYS, MAX_SELLS, CHASE, GAP = 3, 3, 8.0, 5.0
+LEV = {"TQQQ", "SOXL"}   # 3배 레버리지 ETF: 사용자 허용(2026-11-13). 급등 추격선·손절 폭을 완화
 
 
 def _load(name, path):
@@ -84,7 +85,7 @@ def main():
 [포트폴리오] 총자산 ${eq:,.2f}, 현금 ${pf['cash']:,.2f} ({pf['cash']/eq*100:.1f}%), 신규매수중단={pf['halt_buys']}
 [보유]
 {held}
-[하드 규칙 - 코드가 강제, 어기면 주문 폐기] 종목당 최대 {MAX_POS:.0%}(${MAX_POS*eq:,.0f}), 거래 후 현금 {MIN_CASH:.0%}(${MIN_CASH*eq:,.0f}) 이상, 보유 종목 추가매수 금지, 공매도·레버리지·옵션 금지, 당일 +{CHASE}% 이상 급등 종목 매수 금지, 하루 최대 매수 {MAX_BUYS}건·매도 {MAX_SELLS}건, 매수에는 손절가(<종가)와 목표가(>종가) 필수, 정수 수량.
+[하드 규칙 - 코드가 강제, 어기면 주문 폐기] 종목당 최대 {MAX_POS:.0%}(${MAX_POS*eq:,.0f}), 거래 후 현금 {MIN_CASH:.0%}(${MIN_CASH*eq:,.0f}) 이상, 보유 종목 추가매수 금지, 공매도·옵션·마진(차입) 금지 (레버리지 ETF {", ".join(sorted(LEV))}는 허용: 일일 3배 추종이라 변동성·장기 보유 손실(복리 감쇠)이 크므로 손절을 엄격히, 단기 모멘텀 용도로만), 당일 +{CHASE}% 이상 급등 종목 매수 금지, 하루 최대 매수 {MAX_BUYS}건·매도 {MAX_SELLS}건, 매수에는 손절가(<종가)와 목표가(>종가) 필수, 정수 수량.
 [거래 가능 종목] {', '.join(uni)}  (이 밖의 종목은 불가)
 [전략 규칙]
 {m.group(0) if m else ''}
@@ -118,8 +119,8 @@ def main():
             if pf["halt_buys"]: err = "리스크 규칙: 신규 매수 중단"
             elif s in pf["holdings"]: err = "보유 종목 추가매수 금지"
             elif buys >= MAX_BUYS: err = "일일 매수 한도"
-            elif an[s]["change_pct_1d"] >= CHASE: err = f"당일 {an[s]['change_pct_1d']:+}% 급등 추격 금지"
-            elif not (isinstance(stop, (int, float)) and isinstance(tgt, (int, float)) and 0.8 * ref <= stop < ref < tgt): err = "손절/목표가 부적절"
+            elif an[s]["change_pct_1d"] >= CHASE * (2 if s in LEV else 1): err = f"당일 {an[s]['change_pct_1d']:+}% 급등 추격 금지"
+            elif not (isinstance(stop, (int, float)) and isinstance(tgt, (int, float)) and (0.7 if s in LEV else 0.8) * ref <= stop < ref < tgt): err = "손절/목표가 부적절"
             elif amt > MAX_POS * eq: err = f"종목 한도 초과(${amt:,.0f})"
             elif cash - amt < MIN_CASH * eq: err = "최소 현금 위반"
             else: cash -= amt

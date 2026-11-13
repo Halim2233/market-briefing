@@ -4,7 +4,7 @@
   python -I paper/sim.py mark                      # 시세 갱신 + portfolio/performance 갱신
   python -I paper/sim.py buy|sell TICKER QTY --reason "..." [--stop P] [--target P]
   python -I paper/sim.py status
-규칙은 코드에서 강제: 종목당 20% 상한, 최소 현금 20%, 공매도/레버리지/물타기 금지(보유 중 추가매수 거부),
+규칙은 코드에서 강제: 종목당 20% 상한, 최소 현금 20%, 공매도/마진/물타기 금지(3배 레버리지 ETF 매수는 허용)(보유 중 추가매수 거부),
 일 -2% / 누적 -5% 도달 시 신규 매수 거부, 휴장·시세 부재 시 거래 거부."""
 import argparse, csv, json, os, urllib.parse, urllib.request
 from datetime import datetime, timezone

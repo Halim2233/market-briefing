@@ -8,7 +8,7 @@
     MSFT: "마이크로소프트", GOOGL: "알파벳", META: "메타", AAPL: "애플", TSLA: "테슬라", "BRK-B": "버크셔 해서웨이", COST: "코스트코",
     SPY: "S&P500 ETF", QQQ: "나스닥100 ETF", XLV: "헬스케어 ETF", GLD: "금 ETF",
     TSM: "TSMC", MU: "마이크론", ARM: "암", PLTR: "팔란티어", NFLX: "넷플릭스", ORCL: "오라클", CRM: "세일즈포스",
-    SMH: "반도체 ETF", SOXX: "반도체 ETF(SOXX)", ASML: "ASML", QCOM: "퀄컴", AMAT: "어플라이드 머티리얼즈", MRVL: "마벨" };
+    SMH: "반도체 ETF", TQQQ: "나스닥100 3배 ETF", SOXL: "반도체 3배 ETF", SOXX: "반도체 ETF(SOXX)", ASML: "ASML", QCOM: "퀄컴", AMAT: "어플라이드 머티리얼즈", MRVL: "마벨" };
   var nm = function (t) { return KO[t] ? t + " <small class=\"ko\">(" + KO[t] + ")</small>" : t; };
 
   var $ = function (n) { return n == null ? "–" : n; };
