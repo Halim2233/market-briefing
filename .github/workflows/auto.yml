@@ -11,6 +11,9 @@ on:
       briefing_test:
         description: "ping=연결만 시험, true면 브리핑을 reports에 저장하지 않고 아티팩트로만 만든다(Gemini 시험용)"
         default: "false"
+      replan:
+        description: "true면 같은 거래일의 (체결 전) 매매 계획을 새로 만든다"
+        default: "false"
 
 
 permissions:
@@ -74,7 +77,7 @@ jobs:
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
         run: |
           if [ -z "$GEMINI_API_KEY" ]; then echo "::warning::GEMINI_API_KEY 없음 — 매매 계획 건너뜀"; exit 0; fi
-          python -I -u scripts/gemini_trader.py
+          if [ "${{ inputs.replan }}" = "true" ]; then python -I -u scripts/gemini_trader.py --force; else python -I -u scripts/gemini_trader.py; fi
 
       - name: 커밋 & 푸시
         run: |

@@ -293,7 +293,7 @@ def cmd_exec_orders(a):
     log = []
     for o in sorted(todo, key=lambda x: x["action"] != "SELL"):     # 매도 먼저
         sym = o["ticker"]; px = quote(sym)["price"]; gap = (px / o["ref_price"] - 1) * 100
-        if o["action"] == "BUY" and abs(gap) > 3:
+        if o["action"] == "BUY" and abs(gap) > 5:
             o["status"] = "cancelled"; o["note"] = f"시세 {px} 가 기준가 {o['ref_price']} 대비 {gap:+.1f}% — 매수 취소"
         elif a.dry_run:
             log.append(f"[dry-run] {o['action']} {sym} {o['qty']} @~{px} ({gap:+.1f}%)"); continue

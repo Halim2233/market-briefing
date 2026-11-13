@@ -1,15 +1,15 @@
 """마감 후 자동 매매 '계획' 생성: 포트폴리오 + 지표 + 오늘 브리핑 → Gemini → 규칙 검증 → paper/orders.json.
-체결은 하지 않는다. 다음 거래일 개장 후 `paper/sim.py exec-orders`가 실제 시세로 체결한다(기준가 ±3% 초과면 매수 취소).
+체결은 하지 않는다. 다음 거래일 개장 후 `paper/sim.py exec-orders`가 실제 시세로 체결한다(기준가 ±5% 초과면 매수 취소).
 가상 거래 전용. 종료 코드: 0 정상(주문 없음 포함), 1 실패, 3 키 없음.
-환경변수: GEMINI_API_KEY. 옵션: --dry-run (파일을 쓰지 않고 출력만)"""
+환경변수: GEMINI_API_KEY. 옵션: --dry-run (파일을 쓰지 않고 출력만), --force (같은 거래일 계획이 이미 있어도, 체결된 주문이 없을 때 다시 만든다)"""
 import importlib.util, json, os, re, sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PAPER = Path(os.environ.get("PAPER_DIR") or ROOT / "paper")
 MAX_POS, MIN_CASH, SLIP = 0.20, 0.20, 0.0005
-MAX_BUYS, MAX_SELLS, CHASE = 2, 2, 3.0
+MAX_BUYS, MAX_SELLS, CHASE, GAP = 3, 3, 8.0, 5.0
 
 
 def _load(name, path):
@@ -35,8 +35,8 @@ def fmt(c):
 
 
 SYSTEM = """당신은 가상 모의투자(실제 돈 아님)의 포트폴리오 매니저입니다. 입력에 있는 수치와 뉴스만 근거로 하고, 없는 숫자·사실은 만들지 마세요.
-기본 행동은 '아무것도 하지 않기'입니다. 근거가 분명하고 규칙을 지킬 때만 주문을 냅니다. 억지로 거래하지 마세요.
-주문은 다음 거래일 개장 후 체결되며, 시세가 기준가(오늘 종가)에서 ±3% 넘게 벌어지면 매수는 자동 취소됩니다.
+투자 성향은 **공격적 성장·모멘텀**입니다. 기술주(AI·반도체·클라우드·빅테크) 중심으로 높은 수익을 노립니다. 현금을 놀리지 말고 최소 현금 한도(20%)에 가깝게 투입하되, 한 종목 20% 한도 안에서 확신 높은 2~4종목에 집중하세요. 상승 추세 종목의 추가 상승, 과매도 후 반등 초입, 뉴스 모멘텀 모두 근거가 될 수 있습니다. 약해진 보유 종목은 손절 전이라도 교체 매도할 수 있습니다. 다만 입력에 없는 숫자·사실은 쓰지 말고, 근거 없이 거래하지는 마세요.
+주문은 다음 거래일 개장 후 체결되며, 시세가 기준가(오늘 종가)에서 ±5% 넘게 벌어지면 매수는 자동 취소됩니다.
 반드시 아래 JSON만 출력하세요(코드블록 금지):
 {"summary":"시장 판단 2~3문장","orders":[{"action":"BUY|SELL","ticker":"티커","qty":정수,"stop":손절가(BUY만),"target":목표가(BUY만),"reason":"근거 1~2문장(수치 포함)"}]}
 주문이 없으면 "orders":[] 로 두고 summary에 이유를 쓰세요."""
@@ -51,8 +51,12 @@ def main():
     if not session:
         print("자동 점검(autorun) 기록 없음 — 계획 건너뜀"); return
     of = PAPER / "orders.json"
-    if of.exists() and json.loads(of.read_text(encoding="utf-8")).get("session") == session:
-        print(f"{session} 거래일 계획은 이미 있음 — 건너뜀"); return
+    if of.exists():
+        old = json.loads(of.read_text(encoding="utf-8"))
+        if old.get("session") == session:
+            if "--force" not in sys.argv or any(o["status"] != "pending" for o in old["orders"]):
+                print(f"{session} 거래일 계획은 이미 있음(또는 일부 체결됨) — 건너뜀"); return
+            print("--force: 체결 전 계획을 새로 만든다")
 
     uni = universe()
     col = _load("collect", ROOT / "scripts" / "collect.py")
@@ -127,11 +131,11 @@ def main():
         ok.append({"action": act, "ticker": s, "qty": q, "stop": o.get("stop") if act == "BUY" else None,
                    "target": o.get("target") if act == "BUY" else None, "reason": why, "ref_price": ref, "status": "pending"})
 
-    out = {"session": session, "created": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+    out = {"session": session, "created": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds") + "Z",
            "summary": str(plan.get("summary", ""))[:600], "orders": ok,
            "rejected": [{"order": o, "why": e} for o, e in bad]}
     L = [f"\n## {session} (거래일) — 자동 매매 계획 (LLM 판단)",
-         "> Gemini가 지표·브리핑을 보고 제안하고 코드가 규칙을 검증한 계획입니다. 체결은 다음 거래일 개장 후 실제 시세로 하며, 시세가 기준가(종가)에서 ±3% 넘게 벌어지면 매수는 취소합니다. LLM 판단은 틀릴 수 있습니다(가상 거래).",
+         "> Gemini가 지표·브리핑을 보고 제안하고 코드가 규칙을 검증한 계획입니다. 체결은 다음 거래일 개장 후 실제 시세로 하며, 시세가 기준가(종가)에서 ±5% 넘게 벌어지면 매수는 취소합니다. LLM 판단은 틀릴 수 있습니다(가상 거래).",
          f"- **시장 판단:** {out['summary']}"]
     for o in ok:
         px = f"기준가 {o['ref_price']}" + (f" · 손절 {o['stop']} · 목표 {o['target']}" if o["action"] == "BUY" else "")
