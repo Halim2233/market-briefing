@@ -1,0 +1,39 @@
+name: auto-open
+
+# 평일 15:00 UTC = ET 10:00(겨울)/11:00(여름) — 정규장 개장 후. 전날 마감 후 만들어 둔 paper/orders.json 의 대기 주문을
+# 실제 시세로 체결한다(기준가 ±3% 초과 매수는 취소, 한도 규칙은 sim.py 가 강제). 가상 거래 전용.
+on:
+  schedule:
+    - cron: "0 15 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-daily
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 대기 주문 체결
+        run: python -I paper/sim.py exec-orders
+      - name: 커밋 & 푸시
+        run: |
+          git config user.name "auto-bot"
+          git config user.email "auto-bot@users.noreply.github.com"
+          git add paper docs/paper
+          if git diff --cached --quiet; then
+            echo "변경 없음"
+          else
+            git commit -m "auto: $(date -u +%F) open-session order execution"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push
+          fi

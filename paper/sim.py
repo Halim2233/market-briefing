@@ -230,7 +230,7 @@ def _rule_actions(pf):
 
 
 def cmd_autorun(a):
-    """마감 후 자동 점검: 평가 → 손절/목표가 규칙 매도 → 일일 보고서 기록 → 동기화. 신규 매수는 하지 않는다."""
+    """마감 후 자동 점검: 평가 → 손절/목표가 규칙 매도 → 일일 보고서 기록 → 동기화. 신규 매매 판단은 scripts/gemini_trader.py."""
     q = quote("SPY")
     if q["regular_open"]:
         print("정규장 진행 중 — 자동 점검 건너뜀"); return
@@ -257,7 +257,7 @@ def cmd_autorun(a):
     perf = json.loads(PERF.read_text(encoding="utf-8"))
     eq, ret = pf["total_equity"], (pf["total_equity"] / INITIAL - 1) * 100
     L = [f"\n## {session} (거래일) — 마감 후 자동 점검",
-         f"> 규칙 기반 자동 기록입니다(LLM 판단 없음). 시세: Yahoo Finance 종가 (SPY 기준 시각 {q['time'].isoformat(timespec='minutes')}), 갱신 {pf['last_update_et']}. 신규 매수·매도 판단은 자동화하지 않았습니다.",
+         f"> 규칙 기반 자동 기록입니다(LLM 판단 없음). 시세: Yahoo Finance 종가 (SPY 기준 시각 {q['time'].isoformat(timespec='minutes')}), 갱신 {pf['last_update_et']}. 신규 매수·매도 판단은 아래 '자동 매매 계획' 단계에서 별도로 기록합니다.",
          f"- **포트폴리오:** 총자산 ${eq:,.2f} / 현금 ${pf['cash']:,.2f} ({pf['cash']/eq*100:.1f}%) / 누적 {ret:+.2f}% / 금일 {perf.get('today_return_pct')}%",
          f"- **SPY 대비:** SPY {perf.get('spy_return_pct')}% · 초과 {perf.get('excess_vs_spy_pct')}%p · MDD(스냅샷) {perf.get('mdd_pct_snapshot_based')}%"]
     for s, h in pf["holdings"].items():
@@ -275,11 +275,56 @@ def cmd_autorun(a):
     print("자동 점검 완료:", session, "| 자동 거래:", done or "없음")
 
 
+def cmd_exec_orders(a):
+    """개장 후 자동 체결: paper/orders.json 의 대기 주문을 실제(15분 이내) 시세로 체결. 규칙은 cmd_trade 가 강제."""
+    of = D / "orders.json"
+    if not of.exists():
+        print("대기 주문 없음"); return
+    od = json.loads(of.read_text(encoding="utf-8"))
+    todo = [o for o in od["orders"] if o["status"] == "pending"]
+    if not todo:
+        print("대기 주문 없음"); return
+    q = quote("SPY")
+    if not q["regular_open"]:
+        print("정규장 아님 — 체결 보류(다음 실행에서 재시도)"); return
+    today = q["time"].date(); sess = datetime.fromisoformat(od["session"]).date()
+    if today <= sess or (today - sess).days > 5:
+        print(f"계획 거래일 {sess} / 오늘 {today} — 체결 시점이 아님"); return
+    log = []
+    for o in sorted(todo, key=lambda x: x["action"] != "SELL"):     # 매도 먼저
+        sym = o["ticker"]; px = quote(sym)["price"]; gap = (px / o["ref_price"] - 1) * 100
+        if o["action"] == "BUY" and abs(gap) > 3:
+            o["status"] = "cancelled"; o["note"] = f"시세 {px} 가 기준가 {o['ref_price']} 대비 {gap:+.1f}% — 매수 취소"
+        elif a.dry_run:
+            log.append(f"[dry-run] {o['action']} {sym} {o['qty']} @~{px} ({gap:+.1f}%)"); continue
+        else:
+            t = argparse.Namespace(cmd=o["action"].lower(), ticker=sym, qty=o["qty"], at_close=False,
+                                   reason="[LLM 자동 판단] " + o["reason"], stop=o.get("stop"), target=o.get("target"))
+            try:
+                cmd_trade(t); o["status"] = "filled"; o["note"] = f"기준가 대비 {gap:+.1f}%에 체결"
+            except SystemExit as e:
+                o["status"] = "rejected"; o["note"] = f"규칙/시세로 거부: {e}"
+        log.append(f"- **{o['action']} {sym} {o['qty']}주** → {o['status']} ({o.get('note','')})")
+    if a.dry_run:
+        print("\n".join(log)); return
+    od["executed_et"] = datetime.now(ET).isoformat(timespec="minutes")
+    of.write_text(json.dumps(od, ensure_ascii=False, indent=1), encoding="utf-8")
+    cmd_mark(a)
+    pf = load()
+    L = ["", f"## {today} (거래일) — 개장 후 자동 체결 (실제 시세, 슬리피지 {SLIP_BPS}bp 가정)"] + log + [
+         f"- **포트폴리오:** 총자산 ${pf['total_equity']:,.2f} / 현금 ${pf['cash']:,.2f}"]
+    with (D / "daily_report.md").open("a", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(L) + "\n")
+    sync()
+    print("\n".join(L))
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser(); sp = p.add_subparsers(dest="cmd", required=True)
     for n, f in (("init", cmd_init), ("mark", cmd_mark), ("sync", lambda a: sync()), ("status", cmd_status)):
         sp.add_parser(n).set_defaults(fn=f)
     sa = sp.add_parser("autorun"); sa.set_defaults(fn=cmd_autorun); sa.add_argument("--dry-run", action="store_true")
+    sx = sp.add_parser("exec-orders"); sx.set_defaults(fn=cmd_exec_orders); sx.add_argument("--dry-run", action="store_true")
     for n in ("buy", "sell"):
         s = sp.add_parser(n); s.set_defaults(fn=cmd_trade)
         s.add_argument("ticker"); s.add_argument("qty", type=float); s.add_argument("--reason", required=True)

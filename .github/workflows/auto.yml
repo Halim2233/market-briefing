@@ -2,7 +2,7 @@ name: auto-daily
 
 # 평일 미국 정규장 마감 후 자동 실행: UTC 21:30 = KST 06:30 = ET 16:30(겨울)/17:30(여름) → 항상 마감 이후.
 # 하는 일: 수집 → (Gemini) 브리핑 생성 → 모의투자 평가·손절/목표가 규칙 점검·일일 기록 → 커밋/푸시.
-# 하지 않는 일: 신규 매수/매도 판단 (사용자와 세션에서 결정).
+# + Gemini 매매 '계획'(paper/orders.json) 생성. 체결은 auto-open.yml 이 다음 거래일 개장 후 실제 시세로 한다.
 on:
   schedule:
     - cron: "30 21 * * 1-5"
@@ -64,6 +64,17 @@ jobs:
 
       - name: 모의투자 마감 점검 (평가 · 손절/목표가 규칙 · 일일 기록)
         run: python -I paper/sim.py autorun
+
+      - name: 자동 매매 계획 (Gemini 판단 → 규칙 검증 → paper/orders.json, 체결은 다음 개장 후)
+        continue-on-error: true
+        timeout-minutes: 10
+        if: ${{ inputs.briefing_test != 'true' && inputs.briefing_test != 'ping' }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then echo "::warning::GEMINI_API_KEY 없음 — 매매 계획 건너뜀"; exit 0; fi
+          python -I -u scripts/gemini_trader.py
 
       - name: 커밋 & 푸시
         run: |

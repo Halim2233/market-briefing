@@ -8,5 +8,6 @@
 
 ## 자동화 (.github/workflows/auto.yml)
 - 평일 06:30 KST(미국 마감 후)에 수집 → Gemini 브리핑(`scripts/gemini_briefing.py`, 시크릿 `GEMINI_API_KEY`) → `paper/sim.py autorun` → 커밋/푸시.
-- `autorun`은 평가, 손절/목표가 **규칙 매도**, 일일 기록만 한다. **신규 매수/매도 판단은 자동화하지 않는다** — 사용자와 세션에서 결정.
-- 자동 점검이 `daily_report.md` 끝에 항목을 추가하므로 수동 보고서와 겹치지 않게 날짜별로 이어 쓴다.
+- `autorun`은 평가, 손절/목표가 **규칙 매도**, 일일 기록을 한다.
+- **신규 매수/매도 판단도 자동화됨 (2026-11-13 사용자 지시, 가상 거래):** 마감 후 `scripts/gemini_trader.py`가 Gemini 제안을 하드 규칙(20% 한도·현금 20%·추가매수 금지·급등 추격 금지·일 매수 2/매도 2건·손절/목표 필수)으로 검증해 `paper/orders.json`에 저장 → `auto-open.yml`(평일 15:00 UTC)이 `sim.py exec-orders`로 개장 후 실제 시세에 체결(매수는 기준가 ±3% 초과 시 취소). 매매 후보 종목은 `paper.js`의 `KO` 목록에 있는 티커뿐 — 새 종목을 허용하려면 KO에 한글 이름을 먼저 추가한다. 세션에서 수동 거래할 때는 `orders.json`의 대기 주문과 겹치지 않는지 확인한다.
+- 자동 점검·계획·체결이 `daily_report.md` 끝에 항목을 추가하므로 수동 보고서와 겹치지 않게 날짜별로 이어 쓴다.
