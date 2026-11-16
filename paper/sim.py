@@ -288,7 +288,8 @@ def cmd_exec_orders(a):
     if not q["regular_open"]:
         print("정규장 아님 — 체결 보류(다음 실행에서 재시도)"); return
     today = q["time"].date(); sess = datetime.fromisoformat(od["session"]).date()
-    if today <= sess or (today - sess).days > 5:
+    same = getattr(a, "same_day", False)
+    if (today != sess if same else today <= sess) or (today - sess).days > 5:
         print(f"계획 거래일 {sess} / 오늘 {today} — 체결 시점이 아님"); return
     log = []
     for o in sorted(todo, key=lambda x: x["action"] != "SELL"):     # 매도 먼저
@@ -324,7 +325,7 @@ if __name__ == "__main__":
     for n, f in (("init", cmd_init), ("mark", cmd_mark), ("sync", lambda a: sync()), ("status", cmd_status)):
         sp.add_parser(n).set_defaults(fn=f)
     sa = sp.add_parser("autorun"); sa.set_defaults(fn=cmd_autorun); sa.add_argument("--dry-run", action="store_true")
-    sx = sp.add_parser("exec-orders"); sx.set_defaults(fn=cmd_exec_orders); sx.add_argument("--dry-run", action="store_true")
+    sx = sp.add_parser("exec-orders"); sx.set_defaults(fn=cmd_exec_orders); sx.add_argument("--dry-run", action="store_true"); sx.add_argument("--same-day", action="store_true")
     for n in ("buy", "sell"):
         s = sp.add_parser(n); s.set_defaults(fn=cmd_trade)
         s.add_argument("ticker"); s.add_argument("qty", type=float); s.add_argument("--reason", required=True)

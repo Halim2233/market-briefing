@@ -31,7 +31,8 @@ def parse_json(text):
 
 
 def fmt(c):
-    return (f"{c['symbol']}: 종가 {c['close']} (1일 {c['change_pct_1d']:+}%, 1개월 {c['change_pct_1m']:+}%) "
+    live = f"[현재가 {c['live_price']} (전일 대비 {c['live_change_pct']:+}%)] " if c.get("live_price") else ""
+    return (f"{c['symbol']}: {live}종가 {c['close']} (1일 {c['change_pct_1d']:+}%, 1개월 {c['change_pct_1m']:+}%) "
             f"SMA20/50/200 {c['sma20']}/{c['sma50']}/{c['sma200']} RSI {c['rsi14']} MACD {c['macd']}/{c['macd_signal']} "
             f"거래량비 {c['volume_vs_20d_avg']} 지지(20일저) {c['support_20d_low']} 저항(20일고) {c['resistance_20d_high']} 52주 {c['low_52w']}~{c['high_52w']}")
 
@@ -46,10 +47,20 @@ SYSTEM = """당신은 가상 모의투자(실제 돈 아님)의 포트폴리오 
 
 def main():
     dry = "--dry-run" in sys.argv
+    LIVE = "--live" in sys.argv
     if not os.environ.get("GEMINI_API_KEY"):
         print("GEMINI_API_KEY 없음 — 건너뜀"); sys.exit(3)
     pf = json.loads((PAPER / "portfolio.json").read_text(encoding="utf-8"))
-    session = pf.get("last_auto_session")
+    sim = _load("sim", PAPER / "sim.py")
+    if LIVE:
+        if not sim.quote("SPY")["regular_open"]:
+            print("정규장 아님 — 건너뜀"); return
+        now_et = datetime.now(sim.ET)
+        if (now_et.hour, now_et.minute) < (10, 0):
+            print("개장 직후(10:00 ET 이전) 변동 구간 — 대기"); return
+        session = now_et.date().isoformat()
+    else:
+        session = pf.get("last_auto_session")
     if not session:
         print("자동 점검(autorun) 기록 없음 — 계획 건너뜀"); return
     of = PAPER / "orders.json"
@@ -67,7 +78,7 @@ def main():
     an = {}
     for s in tick:
         try:
-            r = col.analyze(s)
+            r = col.analyze(s, drop_today=LIVE)
         except Exception as e:
             print(f"[분석 실패] {s}: {e}"); r = None
         if r: an[s] = r
@@ -82,7 +93,9 @@ def main():
     m = re.search(r"## 의사결정 규칙.*?(?=\n## )", strat, re.S)
     eq = pf["total_equity"]
     held = "\n".join(f"- {s}: {h['qty']}주 평단 {h['avg_price']} 종가 {h['last_price']} 손절 {h.get('stop')} 목표 {h.get('target')}" for s, h in pf["holdings"].items()) or "- 없음"
-    user = f"""[기준 거래일] {session} 종가 (체결은 다음 거래일 개장 후)
+    sysmsg = SYSTEM.replace("주문은 다음 거래일 개장 후 체결되며, 시세가 기준가(오늘 종가)에서 ±5% 넘게 벌어지면 매수는 자동 취소됩니다.",
+                            "주문은 이 판단 직후 현재 시세(15분 이내 지연)로 체결됩니다. 지표는 직전 거래일 종가까지의 일봉이고, 오늘 장중 현재가·등락은 [현재가]로 따로 주어집니다.") if LIVE else SYSTEM
+    user = f"""[기준] {session} 장중 판단 — 지표는 직전 거래일 종가 기준, 체결은 이 판단 직후 현재가""" if LIVE else f"""[기준 거래일] {session} 종가 (체결은 다음 거래일 개장 후)
 [포트폴리오] 총자산 ${eq:,.2f}, 현금 ${pf['cash']:,.2f} ({pf['cash']/eq*100:.1f}%), 신규매수중단={pf['halt_buys']}
 [보유]
 {held}
@@ -92,7 +105,7 @@ def main():
 {m.group(0) if m else ''}
 [지표]
 """ + "\n".join(fmt(an[s]) for s in tick if s in an) + f"\n\n[오늘 브리핑 발췌]\n{brief}"
-    raw = gb.gemini(SYSTEM, user, 6000)
+    raw = gb.gemini(sysmsg, user, 6000)
     try:
         plan = parse_json(raw)
     except Exception as e:
@@ -102,7 +115,7 @@ def main():
     for o in plan.get("orders", []):
         try:
             act, s, q = str(o["action"]).upper(), str(o["ticker"]).upper(), int(o["qty"])
-            ref = an[s]["close"]; why = str(o.get("reason", "")).strip()
+            ref = an[s].get("live_price") or an[s]["close"]; why = str(o.get("reason", "")).strip()
         except Exception as e:
             bad.append((o, f"형식 오류 {e}")); continue
         err = None
@@ -120,7 +133,7 @@ def main():
             if pf["halt_buys"]: err = "리스크 규칙: 신규 매수 중단"
             elif s in pf["holdings"]: err = "보유 종목 추가매수 금지"
             elif buys >= MAX_BUYS: err = "일일 매수 한도"
-            elif an[s]["change_pct_1d"] >= CHASE * (2 if s in LEV else 1): err = f"당일 {an[s]['change_pct_1d']:+}% 급등 추격 금지"
+            elif an[s].get("live_change_pct", an[s]["change_pct_1d"]) >= CHASE * (2 if s in LEV else 1): err = f"당일 {an[s].get('live_change_pct', an[s]['change_pct_1d']):+}% 급등 추격 금지"
             elif not (isinstance(stop, (int, float)) and isinstance(tgt, (int, float)) and (0.7 if s in LEV else 0.8) * ref <= stop < ref < tgt): err = "손절/목표가 부적절"
             elif amt > MAX_POS * eq: err = f"종목 한도 초과(${amt:,.0f})"
             elif cash - amt < MIN_CASH * eq: err = "최소 현금 위반"
@@ -136,8 +149,8 @@ def main():
     out = {"session": session, "created": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds") + "Z",
            "summary": str(plan.get("summary", ""))[:600], "orders": ok,
            "rejected": [{"order": o, "why": e} for o, e in bad]}
-    L = [f"\n## {session} (거래일) — 자동 매매 계획 (LLM 판단)",
-         "> Gemini가 지표·브리핑을 보고 제안하고 코드가 규칙을 검증한 계획입니다. 체결은 다음 거래일 개장 후 실제 시세로 하며, 시세가 기준가(종가)에서 ±5% 넘게 벌어지면 매수는 취소합니다. LLM 판단은 틀릴 수 있습니다(가상 거래).",
+    L = [f"\n## {session} (거래일) — " + ("장중 자동 매매 판단 (LLM)" if LIVE else "자동 매매 계획 (LLM 판단)"),
+         "> Gemini가 지표·브리핑을 보고 제안하고 코드가 규칙을 검증한 계획입니다. " + ("체결은 이 판단 직후 같은 실행에서 실제 시세로 합니다(지표는 전 거래일 종가 기준, 오늘 진행 중인 봉은 제외)." if LIVE else "체결은 다음 거래일 개장 후 실제 시세로 하며, 시세가 기준가(종가)에서 ±5% 넘게 벌어지면 매수는 취소합니다.") + " LLM 판단은 틀릴 수 있습니다(가상 거래).",
          f"- **시장 판단:** {out['summary']}"]
     for o in ok:
         px = f"기준가 {o['ref_price']}" + (f" · 손절 {o['stop']} · 목표 {o['target']}" if o["action"] == "BUY" else "")
@@ -150,8 +163,7 @@ def main():
     of.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     with (PAPER / "daily_report.md").open("a", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(L) + "\n")
-    sim = _load("sim", PAPER / "sim.py") if (PAPER / "sim.py").exists() else None
-    if sim: sim.sync()
+    sim.sync()
 
 
 if __name__ == "__main__":

@@ -85,9 +85,13 @@ def fetch_ohlcv(symbol: str, rng: str = "1y") -> dict | None:
     try:
         r = json.loads(http_get(url))["chart"]["result"][0]
         q = r["indicators"]["quote"][0]
-        rows = [(o, h, l, c, v) for o, h, l, c, v in
-                zip(q["open"], q["high"], q["low"], q["close"], q["volume"]) if None not in (o, h, l, c)]
-        return {k: [row[i] for row in rows] for i, k in enumerate(["open", "high", "low", "close", "volume"])}
+        off = r["meta"].get("gmtoffset", 0)
+        day = lambda t: datetime.fromtimestamp(t + off, timezone.utc).date().isoformat()
+        rows = [(o, h, l, c, v, day(t)) for t, o, h, l, c, v in
+                zip(r["timestamp"], q["open"], q["high"], q["low"], q["close"], q["volume"]) if None not in (o, h, l, c)]
+        d = {k: [row[i] for row in rows] for i, k in enumerate(["open", "high", "low", "close", "volume", "date"])}
+        d["today"] = day(datetime.now(timezone.utc).timestamp())   # 거래소 현지 날짜
+        return d
     except Exception as e:
         print(f"[quote] {symbol} 실패: {e}")
         return None
@@ -133,8 +137,13 @@ def candle_patterns(d: dict) -> list[str]:
     return found
 
 
-def analyze(symbol: str) -> dict | None:
+def analyze(symbol: str, drop_today: bool = False) -> dict | None:
+    """drop_today=True: 장중 호출용. 아직 진행 중인 오늘 봉은 지표 계산에서 빼고, 현재가/전일대비만 live_* 로 따로 담는다."""
     d = fetch_ohlcv(symbol)
+    live = None
+    if d and drop_today and d["date"] and d["date"][-1] == d["today"] and len(d["close"]) > 1:
+        live = {"live_price": round(d["close"][-1], 2), "live_change_pct": round((d["close"][-1] / d["close"][-2] - 1) * 100, 2)}
+        d = {k: (v[:-1] if isinstance(v, list) else v) for k, v in d.items()}
     if not d or len(d["close"]) < 60:
         return None
     c, v = d["close"], d["volume"]
@@ -152,6 +161,7 @@ def analyze(symbol: str) -> dict | None:
         "high_52w": r(max(d["high"])), "low_52w": r(min(d["low"])),
         "candle_patterns_today": candle_patterns(d),
         "last_10_closes": [r(x) for x in c[-10:]],
+        **(live or {}),
     }
 
 
