@@ -41,14 +41,20 @@
       "equity": 10017.77,
       "spy": 754.37,
       "price_time_et": "2026-11-13T16:00:00-05:00"
+    },
+    {
+      "time_et": "2026-11-16T23:10:25-05:00",
+      "equity": 9931.57,
+      "spy": 739.95,
+      "price_time_et": "2026-11-16T16:00:00-05:00"
     }
   ],
-  "cumulative_return_pct": 0.178,
-  "today_return_pct": 0.423,
-  "mdd_pct_snapshot_based": -0.244,
-  "spy_return_pct": -0.716,
-  "excess_vs_spy_pct": 0.894,
-  "cash_ratio_pct": 45.71,
+  "cumulative_return_pct": -0.684,
+  "today_return_pct": -0.86,
+  "mdd_pct_snapshot_based": -0.86,
+  "spy_return_pct": -2.614,
+  "excess_vs_spy_pct": 1.93,
+  "cash_ratio_pct": 46.1,
   "halt_buys": false,
   "note": "MDD는 mark 호출 시점 스냅샷 기준(장중 변동 미반영)"
 }
