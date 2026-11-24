@@ -5,7 +5,7 @@
     "AMZN": {
       "qty": 5,
       "avg_price": 266.3031,
-      "last_price": 246.82,
+      "last_price": 255.39,
       "stop": 245.0,
       "target": 295.0,
       "opened_et": "2026-11-12T03:34:14-05:00"
@@ -13,7 +13,7 @@
     "LLY": {
       "qty": 1,
       "avg_price": 1438.0086,
-      "last_price": 1347.11,
+      "last_price": 1364.6,
       "stop": 1330.0,
       "target": 1560.0,
       "opened_et": "2026-11-12T03:34:15-05:00"
@@ -21,13 +21,13 @@
     "V": {
       "qty": 3,
       "avg_price": 425.7628,
-      "last_price": 401.87,
+      "last_price": 409.4,
       "stop": 392.0,
       "target": 455.0,
       "opened_et": "2026-11-12T03:34:16-05:00"
     }
   },
-  "total_equity": 9607.25,
+  "total_equity": 9690.18,
   "created_et": "2026-11-12T03:24:07-05:00",
   "start_date_et": "2026-11-12",
   "benchmark": {
@@ -35,9 +35,9 @@
     "start_price": 759.81,
     "start_time_et": "2026-11-11T16:00:01-05:00"
   },
-  "day_start_equity": 9704.53,
-  "day_start_date": "2026-11-20",
+  "day_start_equity": 9607.87,
+  "day_start_date": "2026-11-23",
   "halt_buys": false,
-  "last_update_et": "2026-11-20T21:44:40-05:00",
-  "last_auto_session": "2026-11-20"
+  "last_update_et": "2026-11-24T00:32:19-05:00",
+  "last_auto_session": "2026-11-23"
 }
